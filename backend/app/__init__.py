@@ -10,6 +10,7 @@ Or via create_app() directly in tests.
 
 import os
 from flask import Flask
+from flask_cors import CORS
 from .db import init_db
 from .routes import api
 from .test_routes import test_api
@@ -27,6 +28,7 @@ def create_app(test_config=None):
         FLASK_DEBUG    — "1" or "true" for debug mode
     """
     app = Flask(__name__, instance_relative_config=False)
+    CORS(app)
 
     # Allow override for unit tests
     if test_config:
