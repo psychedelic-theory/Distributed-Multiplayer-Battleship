@@ -1,1 +1,18 @@
+# Environment variables
 .env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Framework/Tool-specific env files
+*.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# Keep secrets out of repo
+**/.env
+**/.env.*
