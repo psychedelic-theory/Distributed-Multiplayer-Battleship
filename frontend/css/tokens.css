@@ -1,0 +1,141 @@
+/* ============================================================
+   DESIGN TOKENS — Battleship Premium UI
+   Naval Glass aesthetic: deep navy, glassmorphism, precise type
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  /* ── Color Palette ── */
+  --navy-900: #060E1C;
+  --navy-800: #0B1E36;
+  --navy-700: #0B2D5B;
+  --navy-600: #0D3872;
+  --navy-500: #1E6FA8;
+  --navy-400: #2E86C9;
+  --navy-300: #5EB0E8;
+  --navy-200: #B9D9F2;
+  --navy-100: #DFF0FB;
+
+  --gray-600: #6E7B85;
+  --gray-400: #9AAAB5;
+  --gray-300: #C7CDD3;
+  --gray-100: #EEF2F5;
+
+  --hit:    #D62828;
+  --hit-glow: rgba(214, 40, 40, 0.45);
+  --hit-light: #FF4444;
+  --miss:   #F4F6F8;
+  --miss-dim: rgba(244, 246, 248, 0.45);
+  --peg-alt: #1F4E9A;
+
+  --ship:   #1E6FA8;
+  --ship-hit: #D62828;
+  --ship-intact: rgba(30, 111, 168, 0.8);
+
+  /* ── Gradients ── */
+  --gradient-ocean: linear-gradient(135deg, #060E1C 0%, #0B2D5B 40%, #0D3872 70%, #0B1E36 100%);
+  --gradient-surface: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
+  --gradient-hit: radial-gradient(circle, #D62828 0%, #8B0000 100%);
+  --gradient-miss: radial-gradient(circle, #F4F6F8 0%, #C7CDD3 100%);
+  --gradient-ship: linear-gradient(135deg, #1E6FA8 0%, #2E86C9 100%);
+  --gradient-accent: linear-gradient(90deg, #1E6FA8, #5EB0E8);
+
+  /* ── Glass ── */
+  --glass-bg: rgba(11, 30, 54, 0.6);
+  --glass-border: rgba(185, 217, 242, 0.12);
+  --glass-hover: rgba(185, 217, 242, 0.07);
+  --glass-active: rgba(185, 217, 242, 0.15);
+  --glass-blur: blur(20px);
+  --glass-blur-heavy: blur(40px);
+
+  /* ── Shadows ── */
+  --shadow-sm:  0 2px 8px rgba(6, 14, 28, 0.4);
+  --shadow-md:  0 8px 32px rgba(6, 14, 28, 0.5);
+  --shadow-lg:  0 20px 60px rgba(6, 14, 28, 0.7);
+  --shadow-glow-blue:  0 0 30px rgba(30, 111, 168, 0.35);
+  --shadow-glow-hit:   0 0 20px rgba(214, 40, 40, 0.6);
+  --shadow-glow-miss:  0 0 12px rgba(244, 246, 248, 0.3);
+  --shadow-inset: inset 0 1px 0 rgba(185, 217, 242, 0.1);
+
+  /* ── Typography ── */
+  --font-display: 'Syne', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+  --font-body:    'DM Sans', sans-serif;
+
+  --text-xs:   0.6875rem;  /* 11px */
+  --text-sm:   0.8125rem;  /* 13px */
+  --text-base: 0.9375rem;  /* 15px */
+  --text-lg:   1.125rem;
+  --text-xl:   1.375rem;
+  --text-2xl:  1.75rem;
+  --text-3xl:  2.25rem;
+  --text-4xl:  3rem;
+
+  /* ── Spacing ── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Borders ── */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* ── Transitions ── */
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:     cubic-bezier(0, 0, 0.2, 1);
+  --dur-fast:     120ms;
+  --dur-base:     220ms;
+  --dur-slow:     400ms;
+  --dur-slower:   700ms;
+
+  /* ── Layout ── */
+  --header-h: 64px;
+  --sidebar-w: 300px;
+  --board-gap: 3px;
+  --cell-size: clamp(28px, 4.5vw, 42px);
+}
+
+/* ── Global Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--navy-900);
+  color: var(--navy-100);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--navy-800); }
+::-webkit-scrollbar-thumb { background: var(--navy-500); border-radius: 3px; }
+
+/* ── Selection ── */
+::selection { background: rgba(30, 111, 168, 0.4); color: var(--navy-100); }
+
+/* ── Focus ── */
+:focus-visible {
+  outline: 2px solid var(--navy-300);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input  { font-family: inherit; }
+a      { color: inherit; text-decoration: none; }

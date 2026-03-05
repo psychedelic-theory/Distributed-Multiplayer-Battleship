@@ -1,0 +1,222 @@
+/* ============================================================
+   BATTLE GRID — Core game board styles
+   ============================================================ */
+
+.battle-grid-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.grid-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+/* ── Grid Container ── */
+.battle-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--space-4);
+  background: rgba(6, 14, 28, 0.55);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgba(185,217,242,0.08),
+    inset 0 -1px 0 rgba(6,14,28,0.5);
+}
+
+/* ── Column Headers ── */
+.grid-col-headers {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.grid-corner { width: 24px; flex-shrink: 0; }
+
+.grid-axis-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cell-size);
+  height: 20px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--navy-300);
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* ── Grid Row ── */
+.grid-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.grid-row-label {
+  width: 24px;
+  height: var(--cell-size);
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+/* ── Cells ── */
+.grid-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  flex-shrink: 0;
+  position: relative;
+  background: rgba(11, 30, 54, 0.4);
+  border: 1px solid rgba(30, 111, 168, 0.12);
+  transition: background var(--dur-fast) var(--ease-smooth),
+              border-color var(--dur-fast) var(--ease-smooth),
+              transform var(--dur-fast) var(--ease-spring);
+  overflow: hidden;
+}
+
+/* Subtle top and left borders for sea grid look */
+.grid-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg,
+    rgba(94, 176, 232, 0.03) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.cell-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Cell States ── */
+.grid-cell--placeable:hover {
+  background: rgba(30, 111, 168, 0.25);
+  border-color: rgba(94, 176, 232, 0.4);
+  cursor: crosshair;
+  z-index: 1;
+}
+
+.grid-cell--targetable {
+  cursor: crosshair;
+}
+.grid-cell--targetable:hover,
+.grid-cell--hover {
+  background: rgba(30, 111, 168, 0.18);
+  border-color: rgba(94, 176, 232, 0.35);
+  transform: scale(1.05);
+  z-index: 2;
+  box-shadow: 0 0 12px rgba(94, 176, 232, 0.2);
+}
+
+.grid-cell--pending {
+  background: rgba(30, 111, 168, 0.3);
+  border-color: rgba(94, 176, 232, 0.5);
+}
+
+.grid-cell--ship {
+  background: rgba(30, 111, 168, 0.2);
+  border-color: rgba(94, 176, 232, 0.3);
+}
+
+.grid-cell--hit {
+  background: rgba(139, 0, 0, 0.35) !important;
+  border-color: rgba(214, 40, 40, 0.5) !important;
+  cursor: default !important;
+}
+
+.grid-cell--miss {
+  background: rgba(110, 123, 133, 0.15) !important;
+  border-color: rgba(199, 205, 211, 0.2) !important;
+  cursor: default !important;
+}
+
+.grid-cell--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ── Pegs ── */
+.peg {
+  width: 45%;
+  height: 45%;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.peg--hit {
+  background: var(--gradient-hit);
+  box-shadow: var(--shadow-glow-hit), inset 0 1px 0 rgba(255,100,100,0.4);
+  animation: hitBurst var(--dur-slow) var(--ease-spring) both;
+}
+
+.peg--hit::after {
+  content: '';
+  position: absolute;
+  inset: 20%;
+  border-radius: 50%;
+  background: rgba(255, 180, 180, 0.5);
+}
+
+.peg--miss {
+  background: var(--gradient-miss);
+  opacity: 0.55;
+  box-shadow: 0 0 6px rgba(244, 246, 248, 0.2), inset 0 1px 0 rgba(255,255,255,0.5);
+  animation: missSettle var(--dur-base) var(--ease-spring) both;
+}
+
+/* ── Ship Markers ── */
+.ship-marker {
+  width: 55%;
+  height: 55%;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-ship);
+  box-shadow: 0 0 10px rgba(30,111,168,0.6), inset 0 1px 0 rgba(94,176,232,0.5);
+}
+
+.ship-marker--pending {
+  background: linear-gradient(135deg, rgba(94,176,232,0.7) 0%, rgba(30,111,168,0.7) 100%);
+  box-shadow: 0 0 14px rgba(94,176,232,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+  animation: scaleIn 0.2s var(--ease-spring) both;
+}
+
+/* ── Grid glow frame (active game) ── */
+.battle-grid--active-turn {
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 2px rgba(94,176,232,0.25),
+    0 0 40px rgba(30,111,168,0.2),
+    inset 0 1px 0 rgba(185,217,242,0.08);
+}
+
+/* ── Coordinates tooltip ── */
+.grid-cell[data-coord]::after {
+  content: attr(data-coord);
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--navy-300);
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+  pointer-events: none;
+}
+.grid-cell:hover::after { opacity: 0.5; }
