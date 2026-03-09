@@ -212,10 +212,15 @@ export function GameScreen({ onNavigate }) {
   }
 
   function resolveCurrentPlayer(game) {
-    // We don't have the full player list here, so we rely on turn rotation
-    // The real source of truth is game.current_turn_index
-    // For the UI we poll and check if the last move came from us
-    return null; // fallback — rely on polling
+    const players = Array.isArray(game.players) ? game.players : [];
+    const activePlayers = players
+      .filter(p => !p.is_eliminated)
+      .sort((a, b) => a.turn_order - b.turn_order);
+  
+    if (!activePlayers.length) return null;
+  
+    const idx = game.current_turn_index % activePlayers.length;
+    return activePlayers[idx].player_id;
   }
 
   function syncMoves(moves) {
