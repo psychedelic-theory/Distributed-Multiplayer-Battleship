@@ -192,8 +192,8 @@ export function GameScreen({ onNavigate }) {
       updateHudStatus(game);
 
       if (game.status === 'active') {
-        const activePid = resolveCurrentPlayer(game);
-        // FIX: parseInt for type-safe comparison
+        const activePid = game.current_player_id;
+        // Backend is source-of-truth for turn ownership
         isMyTurn = (parseInt(activePid, 10) === parseInt(playerId, 10));
 
         console.log('[POLL] turn_index:', game.current_turn_index,
@@ -225,18 +225,6 @@ export function GameScreen({ onNavigate }) {
     } catch (err) {
       console.warn('[POLL] error:', err);
     }
-  }
-
-  function resolveCurrentPlayer(game) {
-    const players = Array.isArray(game.players) ? game.players : [];
-    const activePlayers = players
-      .filter(p => !p.is_eliminated)
-      .sort((a, b) => a.turn_order - b.turn_order);
-  
-    if (!activePlayers.length) return null;
-  
-    const idx = game.current_turn_index % activePlayers.length;
-    return activePlayers[idx].player_id;
   }
 
   function syncMoves(moves) {
@@ -340,7 +328,7 @@ export function GameScreen({ onNavigate }) {
 
       // FIX: Evaluate turn state if game is already active
       if (game.status === 'active') {
-        const activePid = resolveCurrentPlayer(game);
+        const activePid = game.current_player_id;
 
         console.log('[INIT] resolvedPlayer:', activePid, '(type:', typeof activePid, ')');
 

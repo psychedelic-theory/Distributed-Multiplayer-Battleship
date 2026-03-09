@@ -264,12 +264,21 @@ def get_game(game_id):
             )
             players = cur.fetchall()
 
+            current_player_id = None
+            if game["status"] == "active":
+                current_player_id = get_current_player_id(
+                    cur,
+                    game_id,
+                    game["current_turn_index"],
+                )
+
     return jsonify({
         "game_id":             game["game_id"],
         "grid_size":           game["grid_size"],
         "max_players":         game["max_players"],
         "status":              game["status"],
         "current_turn_index":  game["current_turn_index"],
+        "current_player_id":   current_player_id,
         "active_players":      active_players,
         "players": [
             {
