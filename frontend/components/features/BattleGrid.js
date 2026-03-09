@@ -112,7 +112,7 @@ export function BattleGrid({
 
       cell.appendChild(inner);
 
-      if (!disabled && (mode === 'attack' || mode === 'placement')) {
+      if (mode === 'attack' || mode === 'placement') {
         cell.addEventListener('click', () => onCellClick({ row: r, col: c, cell }));
 
         if (mode === 'attack') {
