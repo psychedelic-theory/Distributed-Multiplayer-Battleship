@@ -175,7 +175,11 @@ export function BattleGrid({
     disabled = v;
     cells.forEach(c => {
       c.classList.toggle('grid-cell--disabled', v);
-      if (v) c.classList.remove('grid-cell--targetable');
+      if (v) {
+         c.classList.remove('grid-cell--targetable');
+        } else if (node === 'attack' && !c.classList.contains('grid-cell--hit') && !c.classList.contains('grid-cell--miss')) {
+          c.classList.add('grid-cell--targetable');
+        }
     });
   };
 
