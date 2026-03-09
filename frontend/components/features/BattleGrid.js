@@ -173,13 +173,19 @@ export function BattleGrid({
 
   container.setDisabled = (v) => {
     disabled = v;
+    const isAttackMode = mode === 'attack'; // defensive: avoid accidental undefined variable access
+
     cells.forEach(c => {
       c.classList.toggle('grid-cell--disabled', v);
-      if (v) {
-         c.classList.remove('grid-cell--targetable');
-        } else if (node === 'attack' && !c.classList.contains('grid-cell--hit') && !c.classList.contains('grid-cell--miss')) {
-          c.classList.add('grid-cell--targetable');
-        }
+
+      if (v || !isAttackMode) {
+        c.classList.remove('grid-cell--targetable');
+        return;
+      }
+
+      if (!c.classList.contains('grid-cell--hit') && !c.classList.contains('grid-cell--miss')) {
+        c.classList.add('grid-cell--targetable');
+      }
     });
   };
 
