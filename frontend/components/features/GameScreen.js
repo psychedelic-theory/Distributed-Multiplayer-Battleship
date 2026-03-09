@@ -146,13 +146,15 @@ export function GameScreen({ onNavigate }) {
 
       if (game_status === 'finished') {
         stopPolling();
-        store.set({ winnerId: winner_id });
+        gameStatus = 'finished';
+        store.set({ winnerId: winner_id, gameStatus: 'finished' });
         showToast({ message: winner_id === playerId ? '🏆 Victory! You win!' : 'Defeat — better luck next time', type: winner_id === playerId ? 'success' : 'error', duration: 5000 });
         setTimeout(() => onNavigate('results'), 2500);
         return;
       }
 
-      isMyTurn = (next_player_id === playerId);
+      // FIX: Use parseInt for safe comparison (guards against type mismatch)
+      isMyTurn = (parseInt(next_player_id, 10) === parseInt(playerId, 10));
       updateTurnIndicator();
       if (!isMyTurn) {
         attackGrid.setDisabled(true);
@@ -170,7 +172,7 @@ export function GameScreen({ onNavigate }) {
   // ── Polling ──────────────────────────────────────────────
   function startPolling() {
     if (pollInterval) return;
-    pollInterval = setInterval(pollGame, 2500);
+    pollInterval = setInterval(pollGame, 2000);
   }
 
   function stopPolling() {
@@ -191,7 +193,14 @@ export function GameScreen({ onNavigate }) {
 
       if (game.status === 'active') {
         const activePid = resolveCurrentPlayer(game);
-        isMyTurn = (activePid === playerId);
+        // FIX: parseInt for type-safe comparison
+        isMyTurn = (parseInt(activePid, 10) === parseInt(playerId, 10));
+
+        console.log('[POLL] turn_index:', game.current_turn_index,
+                    'activePid:', activePid, '(type:', typeof activePid, ')',
+                    'playerId:', playerId, '(type:', typeof playerId, ')',
+                    'isMyTurn:', isMyTurn);
+
         updateTurnIndicator();
 
         if (isMyTurn) {
@@ -205,10 +214,17 @@ export function GameScreen({ onNavigate }) {
 
       if (game.status === 'finished') {
         stopPolling();
+        // Find winner from players list
+        const activePlayers = (game.players || []).filter(p => !p.is_eliminated);
+        if (activePlayers.length === 1) {
+          store.set({ winnerId: activePlayers[0].player_id });
+        }
         setTimeout(() => onNavigate('results'), 1500);
       }
 
-    } catch { /* network hiccup — keep polling */ }
+    } catch (err) {
+      console.warn('[POLL] error:', err);
+    }
   }
 
   function resolveCurrentPlayer(game) {
@@ -229,20 +245,22 @@ export function GameScreen({ onNavigate }) {
     lastMoveId = moves.length;
 
     newMoves.forEach(m => {
+      // FIX: parseInt for safe comparison
+      const isMine = (parseInt(m.player_id, 10) === parseInt(playerId, 10));
+
       // Update defense grid if someone hit our ship
-      if (m.player_id !== playerId && m.result === 'hit') {
+      if (!isMine && m.result === 'hit') {
         const isMyShip = myShips.some(s => s.row === m.row && s.col === m.col);
         if (isMyShip) defenseGrid.updateCell(m.row, m.col, 'hit');
       }
       // Update attack grid with shots we already fired (sync)
-      if (m.player_id === playerId && !myShots.some(s => s.row === m.row && s.col === m.col)) {
+      if (isMine && !myShots.some(s => s.row === m.row && s.col === m.col)) {
         myShots.push({ row: m.row, col: m.col, result: m.result });
         attackGrid.updateCell(m.row, m.col, m.result);
       }
 
       // Log entry
       const entry = document.createElement('div');
-      const isMine = m.player_id === playerId;
       entry.className = `move-entry move-entry--${m.result}${isMine ? ' move-entry--mine' : ''}`;
       entry.style.animation = `slideInRight var(--dur-base) var(--ease-out) both`;
       const col = String.fromCharCode(65 + m.col);
@@ -309,14 +327,39 @@ export function GameScreen({ onNavigate }) {
         api.getMoves(gameId),
       ]);
 
+      // FIX: Always set gameStatus and sync state first
+      gameStatus = game.status;
+      store.set({ gameStatus });
+      updateHudStatus(game);
+      syncMoves(movesRes.moves || []);
+
+      console.log('[INIT] game.status:', game.status,
+                  'current_turn_index:', game.current_turn_index,
+                  'playerId:', playerId, '(type:', typeof playerId, ')',
+                  'players:', JSON.stringify(game.players));
+
+      // FIX: Evaluate turn state if game is already active
       if (game.status === 'active') {
         const activePid = resolveCurrentPlayer(game);
-        isMyTurn = (activePid === playerId);
+
+        console.log('[INIT] resolvedPlayer:', activePid, '(type:', typeof activePid, ')');
+
+        // FIX: parseInt on both sides to prevent string vs number mismatch
+        isMyTurn = (parseInt(activePid, 10) === parseInt(playerId, 10));
+
+        console.log('[INIT] isMyTurn:', isMyTurn);
+
         updateTurnIndicator();
         attackGrid.setDisabled(!isMyTurn);
       }
-      if (!isMyTurn) startPolling();
+
+      // Only poll if it's not our turn (or game isn't active yet)
+      if (!isMyTurn) {
+        startPolling();
+      }
+
     } catch (e) {
+      console.error('[INIT] error:', e);
       showToast({ message: 'Could not load game state', type: 'error' });
     }
   }
