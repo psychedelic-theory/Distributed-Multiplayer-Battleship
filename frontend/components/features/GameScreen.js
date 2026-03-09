@@ -303,11 +303,14 @@ export function GameScreen({ onNavigate }) {
         api.getGame(gameId),
         api.getMoves(gameId),
       ]);
-      gameStatus = game.status;
-      store.set({ gameStatus });
-      updateHudStatus(game);
-      syncMoves(movesRes.moves || []);
-      startPolling();
+
+      if (game.status === 'active') {
+        const activePid = resolveCurrentPlayer(game);
+        isMyTurn = (activePid === playerId);
+        updateTurnIndicator();
+        attackGrid.setDisabled(!isMyTurn);
+      }
+      if (!isMyTurn) startPolling();
     } catch (e) {
       showToast({ message: 'Could not load game state', type: 'error' });
     }
