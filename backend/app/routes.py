@@ -238,7 +238,7 @@ def get_game(game_id):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT game_id, grid_size, status, current_turn_index
+                SELECT game_id, grid_size, max_players, status, current_turn_index
                 FROM games WHERE game_id=%s
                 """,
                 (game_id,),
@@ -253,12 +253,33 @@ def get_game(game_id):
             )
             active_players = cur.fetchone()["cnt"]
 
+            cur.execute(
+                """
+                SELECT player_id, turn_order, is_eliminated, ships_placed
+                FROM game_players
+                WHERE game_id=%s
+                ORDER BY turn_order
+                """,
+                (game_id,),
+            )
+            players = cur.fetchall()
+
     return jsonify({
         "game_id":             game["game_id"],
         "grid_size":           game["grid_size"],
+        "max_players":         game["max_players"],
         "status":              game["status"],
         "current_turn_index":  game["current_turn_index"],
         "active_players":      active_players,
+        "players": [
+            {
+                "player_id": p["player_id"],
+                "turn_order": p["turn_order"],
+                "is_eliminated": p["is_eliminated"],
+                "ships_placed": p["ships_placed"],
+            }
+            for p in players
+        ],
     }), 200
 
 
@@ -460,10 +481,10 @@ def fire(game_id):
                 conn.commit()
 
                 return jsonify({
-                    "result":       result,
+                    "result":         result,
                     "next_player_id": None,
-                    "game_status":  "finished",
-                    "winner_id":    winner_id,
+                    "game_status":    "finished",
+                    "winner_id":      winner_id,
                 }), 200
 
             # Advance turn
