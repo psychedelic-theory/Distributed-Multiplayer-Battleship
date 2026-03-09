@@ -28,7 +28,13 @@ def create_app(test_config=None):
         FLASK_DEBUG    — "1" or "true" for debug mode
     """
     app = Flask(__name__, instance_relative_config=False)
-    CORS(app)
+    CORS(app, resources={
+        r"/api/*":{
+            "origins": "*",
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "X-Test-Password"],
+        }
+    })
 
     # Allow override for unit tests
     if test_config:
@@ -38,6 +44,12 @@ def create_app(test_config=None):
     app.register_blueprint(api)
     app.register_blueprint(test_api)
 
+    # Manual CORS fallback for proxies that strip headers
+    def add_cors_headers(response):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Test-Password"
+        return response
     # Initialize DB schema on startup (idempotent)
     with app.app_context():
         try:
