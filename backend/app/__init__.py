@@ -50,6 +50,9 @@ def create_app(test_config=None):
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Test-Mode, X-Test-Password"
         return response
+    
+    app.after_request(add_cors_headers)
+    
     # Initialize DB schema on startup (idempotent)
     with app.app_context():
         init_db()
