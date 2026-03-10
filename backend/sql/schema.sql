@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS game_players (
     is_eliminated   BOOLEAN NOT NULL DEFAULT FALSE,
     ships_placed    BOOLEAN NOT NULL DEFAULT FALSE,
     joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (game_id, player_id)
+    PRIMARY KEY (game_id, player_id),
     UNIQUE (game_id, turn_order)
 );
 
