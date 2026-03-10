@@ -75,11 +75,10 @@ def _normalize_player_id(body):
 
 def _normalize_ship_cells(ships, gs):
     """
-    Parse grader payload shapes into a flat list of (row, col) cells.
+    Parse ship payload into a flat list of (row, col) cells.
 
-    Accepted ship element formats:
+    Accepted ship element format:
       - {"row": <int>, "col": <int>}
-      - {"coordinates": [[row, col], ...], ...}
     """
     if not isinstance(ships, list) or not ships:
         return None, "ships must be a non-empty array"
@@ -89,34 +88,13 @@ def _normalize_ship_cells(ships, gs):
         if not isinstance(ship, dict):
             return None, "Each ship must be an object"
 
-        # Native backend format.
-        if "row" in ship or "col" in ship:
-            r = ship.get("row")
-            c = ship.get("col")
-            if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
-                return None, "Each ship must have integer row and col"
-            if not (0 <= r < gs and 0 <= c < gs):
-                return None, f"Ship coordinate ({r},{c}) is out of bounds"
-            coords.append((r, c))
-            continue
-
-        # Grader-friendly deterministic format.
-        ship_coords = ship.get("coordinates")
-        if not isinstance(ship_coords, list) or not ship_coords:
-            return None, "Each ship must provide coordinates"
-
-        for cell in ship_coords:
-            if (
-                not isinstance(cell, list)
-                or len(cell) != 2
-                or not isinstance(cell[0], int)
-                or not isinstance(cell[1], int)
-            ):
-                return None, "Each coordinate must be [row, col] integers"
-            r, c = cell
-            if not (0 <= r < gs and 0 <= c < gs):
-                return None, f"Ship coordinate ({r},{c}) is out of bounds"
-            coords.append((r, c))
+        r = ship.get("row")
+        c = ship.get("col")
+        if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
+            return None, "Each ship must have integer row and col"
+        if not (0 <= r < gs and 0 <= c < gs):
+            return None, f"Ship coordinate ({r},{c}) is out of bounds"
+        coords.append((r, c))
 
     if len(coords) != 3:
         return None, "Exactly 3 ship cells are required"

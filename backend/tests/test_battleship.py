@@ -522,8 +522,8 @@ class TestModeGating:
         assert "misses" in data
         assert "sunk" in data
 
-    def test_test_ships_accepts_grader_payload(self):
-        """POST /api/test/games/{id}/ships accepts camelCase + coordinates payload."""
+    def test_test_ships_accepts_row_col_payload(self):
+        """POST /api/test/games/{id}/ships accepts row/col ship payload."""
         test_mode = os.environ.get("TEST_MODE", "false").lower()
         if test_mode != "true":
             pytest.skip("TEST_MODE not enabled")
@@ -533,8 +533,9 @@ class TestModeGating:
         payload = {
             "playerId": p,
             "ships": [
-                {"type": "destroyer", "coordinates": [[0, 0], [0, 1]]},
-                {"type": "patrol", "coordinates": [[1, 1]]},
+                {"row": 0, "col": 0},
+                {"row": 0, "col": 1},
+                {"row": 1, "col": 1},
             ],
         }
         r = requests.post(
