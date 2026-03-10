@@ -60,3 +60,29 @@ CREATE TABLE IF NOT EXISTS moves (
 -- Index for fast move lookups
 CREATE INDEX IF NOT EXISTS idx_moves_game ON moves(game_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_ships_game_player ON ships(game_id, player_id);
+
+
+-- Concurrency safety constraints
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'uq_game_players_turn_order'
+    ) THEN
+        ALTER TABLE game_players
+        ADD CONSTRAINT uq_game_players_turn_order UNIQUE (game_id, turn_order);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'uq_moves_player_cell'
+    ) THEN
+        ALTER TABLE moves
+        ADD CONSTRAINT uq_moves_player_cell UNIQUE (game_id, player_id, row, col);
+    END IF;
+END $$;

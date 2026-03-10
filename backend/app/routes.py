@@ -9,6 +9,7 @@ Rules enforced here:
 """
 
 from flask import Blueprint, request, jsonify
+from psycopg.errors import UniqueViolation
 from .db import get_conn
 from .game_logic import (
     get_current_player_id,
@@ -77,10 +78,14 @@ def create_player():
             if cur.fetchone():
                 return err("username already exists", 400)
 
-            cur.execute(
-                "INSERT INTO players (username) VALUES (%s) RETURNING player_id",
-                (username,),
-            )
+            try:
+                cur.execute(
+                    "INSERT INTO players (username) VALUES (%s) RETURNING player_id",
+                    (username,),
+                )
+            except UniqueViolation:
+                conn.rollback()
+                return err("username already exists", 400)
             player_id = cur.fetchone()["player_id"]
         conn.commit()
 
@@ -219,7 +224,7 @@ def join_game(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT status, max_players FROM games WHERE game_id=%s", (game_id,)
+                "SELECT status, max_players FROM games WHERE game_id=%s FOR UPDATE", (game_id,)
             )
             game = cur.fetchone()
             if not game:
@@ -250,10 +255,14 @@ def join_game(game_id):
                 return err("Game is full", 400)
 
             # Assign next turn_order slot
-            cur.execute(
-                "INSERT INTO game_players (game_id, player_id, turn_order) VALUES (%s, %s, %s)",
-                (game_id, player_id, count),
-            )
+            try:
+                cur.execute(
+                    "INSERT INTO game_players (game_id, player_id, turn_order) VALUES (%s, %s, %s)",
+                    (game_id, player_id, count),
+                )
+            except UniqueViolation:
+                conn.rollback()
+                return err("Game state changed, please retry join", 409)
         conn.commit()
 
     return jsonify({"message": "Joined game successfully"}), 200
@@ -318,7 +327,7 @@ def place_ships(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT status, grid_size FROM games WHERE game_id=%s", (game_id,)
+                "SELECT status, grid_size FROM games WHERE game_id=%s FOR UPDATE", (game_id,)
             )
             game = cur.fetchone()
             if not game:
@@ -401,7 +410,7 @@ def fire(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT game_id, status, current_turn_index, grid_size FROM games WHERE game_id=%s",
+                "SELECT game_id, status, current_turn_index, grid_size FROM games WHERE game_id=%s FOR UPDATE",
                 (game_id,),
             )
             game = cur.fetchone()
@@ -463,10 +472,14 @@ def fire(game_id):
                 result = "miss"
 
             # Log the move
-            cur.execute(
-                "INSERT INTO moves (game_id, player_id, row, col, result) VALUES (%s,%s,%s,%s,%s)",
-                (game_id, player_id, row, col, result),
-            )
+            try:
+                cur.execute(
+                    "INSERT INTO moves (game_id, player_id, row, col, result) VALUES (%s,%s,%s,%s,%s)",
+                    (game_id, player_id, row, col, result),
+                )
+            except UniqueViolation:
+                conn.rollback()
+                return err("You already fired at this cell", 400)
 
             # Check elimination: did we just eliminate the target player?
             if result == "hit" and ship_row:

@@ -316,7 +316,7 @@ def set_turn(game_id):
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT status FROM games WHERE game_id=%s",
+                "SELECT status FROM games WHERE game_id=%s FOR UPDATE",
                 (game_id,),
             )
             game = cur.fetchone()
