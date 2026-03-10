@@ -269,7 +269,7 @@ def get_game(game_id):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT game_id, grid_size, max_players, status, current_turn_index
+                SELECT game_id, grid_size, status, current_turn_index
                 FROM games WHERE game_id=%s
                 """,
                 (game_id,),
@@ -284,42 +284,12 @@ def get_game(game_id):
             )
             active_players = cur.fetchone()["cnt"]
 
-            cur.execute(
-                """
-                SELECT player_id, turn_order, is_eliminated, ships_placed
-                FROM game_players
-                WHERE game_id=%s
-                ORDER BY turn_order
-                """,
-                (game_id,),
-            )
-            players = cur.fetchall()
-
-            current_player_id = None
-            if game["status"] == "active":
-                current_player_id = get_current_player_id(
-                    cur,
-                    game_id,
-                    game["current_turn_index"],
-                )
-
     return jsonify({
         "game_id":             game["game_id"],
         "grid_size":           game["grid_size"],
-        "max_players":         game["max_players"],
         "status":              game["status"],
         "current_turn_index":  game["current_turn_index"],
-        "current_player_id":   current_player_id,
         "active_players":      active_players,
-        "players": [
-            {
-                "player_id": p["player_id"],
-                "turn_order": p["turn_order"],
-                "is_eliminated": p["is_eliminated"],
-                "ships_placed": p["ships_placed"],
-            }
-            for p in players
-        ],
     }), 200
 
 
