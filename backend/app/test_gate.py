@@ -11,7 +11,7 @@ from flask import request, jsonify
 
 TEST_PASSWORD = "clemson-test-2026"
 # Grader password header first; X-Test-Mode also accepted for compatibility.
-TEST_HEADERS = ("X-Test-Password", "X-Test-Mode")
+TEST_HEADERS = ("X-Test-Password") # "X-Test-Mode"
 
 
 def _is_test_mode_enabled() -> bool:

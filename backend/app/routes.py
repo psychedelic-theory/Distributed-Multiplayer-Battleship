@@ -219,7 +219,7 @@ def join_game(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT status, max_players FROM games WHERE game_id=%s", (game_id,)
+                "SELECT status, max_players FROM games WHERE game_id=%s FOR UPDATE", (game_id,)
             )
             game = cur.fetchone()
             if not game:
@@ -318,7 +318,7 @@ def place_ships(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT status, grid_size FROM games WHERE game_id=%s", (game_id,)
+                "SELECT status, grid_size FROM games WHERE game_id=%s FOR UPDATE", (game_id,)
             )
             game = cur.fetchone()
             if not game:
@@ -401,7 +401,7 @@ def fire(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT game_id, status, current_turn_index, grid_size FROM games WHERE game_id=%s",
+                "SELECT game_id, status, current_turn_index, grid_size FROM games WHERE game_id=%s FOR UPDATE",
                 (game_id,),
             )
             game = cur.fetchone()
