@@ -52,10 +52,7 @@ def create_app(test_config=None):
         return response
     # Initialize DB schema on startup (idempotent)
     with app.app_context():
-        try:
-            init_db()
-        except Exception as exc:
-            app.logger.warning(f"DB init skipped or failed: {exc}")
+        init_db()
 
     return app
 
