@@ -579,4 +579,4 @@ class TestModeGating:
         assert r.status_code == 200
 
         game = requests.get(f"{BASE}/api/games/{gid}").json()
-        assert game["current_player_id"] == p2
+        assert game["current_turn_index"] == 1
