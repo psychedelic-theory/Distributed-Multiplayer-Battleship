@@ -41,7 +41,7 @@ def reset():
     with get_conn() as conn:
         with conn.cursor() as cur:
             # Order matters due to FK constraints
-            cur.execute("TRUNCATE moves, ships, game_players, games RESTART IDENTITY CASCADE")
+            cur.execute("TRUNCATE players, moves, ships, game_players, games RESTART IDENTITY CASCADE")
             cur.execute(
                 """
                 UPDATE players
