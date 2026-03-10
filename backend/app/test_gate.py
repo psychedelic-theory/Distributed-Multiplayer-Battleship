@@ -14,12 +14,19 @@ TEST_PASSWORD = "clemson-test-2026"
 TEST_HEADERS = ("X-Test-Mode", "X-Test-Password")
 
 
+def _is_test_mode_enabled() -> bool:
+    """Return True only when TEST_MODE is explicitly enabled."""
+    value = os.environ.get("TEST_MODE", "false")
+    normalized = value.strip().lower()
+    return normalized in {"true", "1", "yes", "on"}
+
+
 def require_test_mode():
     """
     Call at the start of every test endpoint.
     Returns None if allowed, or a (response, 403) tuple to return immediately.
     """
-    if os.environ.get("TEST_MODE", "false").lower() != "true":
+    if not _is_test_mode_enabled():
         return jsonify({"error": "Test mode is disabled"}), 403
 
     provided = ""
