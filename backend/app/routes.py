@@ -88,6 +88,32 @@ def create_player():
 
 
 # ---------------------------------------------------------------------------
+# GET /api/players/<id>
+# ---------------------------------------------------------------------------
+
+@api.route("/players/<int:player_id>", methods=["GET"])
+def get_player(player_id):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT player_id, username
+                FROM players WHERE player_id=%s
+                """,
+                (player_id,),
+            )
+            row = cur.fetchone()
+
+    if not row:
+        return err("Player not found", 404)
+
+    return jsonify({
+        "player_id": row["player_id"],
+        "username": row["username"],
+    }), 200
+
+
+# ---------------------------------------------------------------------------
 # GET /api/players/<id>/stats
 # ---------------------------------------------------------------------------
 
