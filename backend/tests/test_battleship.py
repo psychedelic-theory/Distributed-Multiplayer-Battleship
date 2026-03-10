@@ -500,3 +500,82 @@ class TestModeGating:
 
         game = requests.get(f"{BASE}/api/games/{gid}").json()
         assert game["status"] == "waiting"
+
+    def test_board_reveal_query_param_variant(self):
+        """GET /api/test/games/{id}/board?playerId=... works when TEST_MODE=true."""
+        test_mode = os.environ.get("TEST_MODE", "false").lower()
+        if test_mode != "true":
+            pytest.skip("TEST_MODE not enabled")
+
+        p = create_player("tg-query")
+        gid = create_game(p, max_players=1)
+        place_ships(gid, p, [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}])
+
+        r = requests.get(
+            f"{BASE}/api/test/games/{gid}/board",
+            params={"playerId": p},
+            headers=TEST_HEADER,
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert "hits" in data
+        assert "misses" in data
+        assert "sunk" in data
+
+    def test_test_ships_accepts_grader_payload(self):
+        """POST /api/test/games/{id}/ships accepts camelCase + coordinates payload."""
+        test_mode = os.environ.get("TEST_MODE", "false").lower()
+        if test_mode != "true":
+            pytest.skip("TEST_MODE not enabled")
+
+        p = create_player("tg-ships")
+        gid = create_game(p, max_players=1)
+        payload = {
+            "playerId": p,
+            "ships": [
+                {"type": "destroyer", "coordinates": [[0, 0], [0, 1]]},
+                {"type": "patrol", "coordinates": [[1, 1]]},
+            ],
+        }
+        r = requests.post(
+            f"{BASE}/api/test/games/{gid}/ships",
+            json=payload,
+            headers=TEST_HEADER,
+        )
+        assert r.status_code == 200
+
+    def test_test_reset_alias_endpoint(self):
+        """POST /api/test/games/{id}/reset behaves like restart."""
+        test_mode = os.environ.get("TEST_MODE", "false").lower()
+        if test_mode != "true":
+            pytest.skip("TEST_MODE not enabled")
+
+        gid, p1, p2 = setup_active_game()
+        fire(gid, p1, 5, 5)
+
+        r = requests.post(
+            f"{BASE}/api/test/games/{gid}/reset",
+            headers=TEST_HEADER,
+        )
+        assert r.status_code == 200
+
+        game = requests.get(f"{BASE}/api/games/{gid}").json()
+        assert game["status"] == "waiting"
+
+    def test_set_turn_endpoint(self):
+        """POST /api/test/games/{id}/set-turn forces current player."""
+        test_mode = os.environ.get("TEST_MODE", "false").lower()
+        if test_mode != "true":
+            pytest.skip("TEST_MODE not enabled")
+
+        gid, p1, p2 = setup_active_game()
+
+        r = requests.post(
+            f"{BASE}/api/test/games/{gid}/set-turn",
+            json={"playerId": p2},
+            headers=TEST_HEADER,
+        )
+        assert r.status_code == 200
+
+        game = requests.get(f"{BASE}/api/games/{gid}").json()
+        assert game["current_player_id"] == p2

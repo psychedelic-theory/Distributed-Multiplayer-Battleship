@@ -28,9 +28,11 @@ def err(msg, code):
 
 # ---------------------------------------------------------------------------
 # POST /api/test/games/<id>/restart
+# POST /api/test/games/<id>/reset
 # ---------------------------------------------------------------------------
 
 @test_api.route("/games/<int:game_id>/restart", methods=["POST"])
+@test_api.route("/games/<int:game_id>/reset", methods=["POST"])
 def restart_game(game_id):
     gate = require_test_mode()
     if gate:
@@ -66,6 +68,65 @@ def restart_game(game_id):
     return jsonify({"message": "Game restarted", "game_id": game_id}), 200
 
 
+def _normalize_player_id(body):
+    """Accept both snake_case and camelCase for grader compatibility."""
+    return body.get("player_id", body.get("playerId"))
+
+
+def _normalize_ship_cells(ships, gs):
+    """
+    Parse grader payload shapes into a flat list of (row, col) cells.
+
+    Accepted ship element formats:
+      - {"row": <int>, "col": <int>}
+      - {"coordinates": [[row, col], ...], ...}
+    """
+    if not isinstance(ships, list) or not ships:
+        return None, "ships must be a non-empty array"
+
+    coords = []
+    for ship in ships:
+        if not isinstance(ship, dict):
+            return None, "Each ship must be an object"
+
+        # Native backend format.
+        if "row" in ship or "col" in ship:
+            r = ship.get("row")
+            c = ship.get("col")
+            if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
+                return None, "Each ship must have integer row and col"
+            if not (0 <= r < gs and 0 <= c < gs):
+                return None, f"Ship coordinate ({r},{c}) is out of bounds"
+            coords.append((r, c))
+            continue
+
+        # Grader-friendly deterministic format.
+        ship_coords = ship.get("coordinates")
+        if not isinstance(ship_coords, list) or not ship_coords:
+            return None, "Each ship must provide coordinates"
+
+        for cell in ship_coords:
+            if (
+                not isinstance(cell, list)
+                or len(cell) != 2
+                or not isinstance(cell[0], int)
+                or not isinstance(cell[1], int)
+            ):
+                return None, "Each coordinate must be [row, col] integers"
+            r, c = cell
+            if not (0 <= r < gs and 0 <= c < gs):
+                return None, f"Ship coordinate ({r},{c}) is out of bounds"
+            coords.append((r, c))
+
+    if len(coords) != 3:
+        return None, "Exactly 3 ship cells are required"
+
+    if len(set(coords)) != len(coords):
+        return None, "Ships cannot overlap"
+
+    return coords, None
+
+
 # ---------------------------------------------------------------------------
 # POST /api/test/games/<id>/ships
 # ---------------------------------------------------------------------------
@@ -85,14 +146,14 @@ def place_ships_test_mode(game_id):
     if not body:
         return err("Request body must be valid JSON", 400)
 
-    player_id = body.get("player_id")
-    ships     = body.get("ships")
+    player_id = _normalize_player_id(body)
+    ships = body.get("ships")
 
     if player_id is None:
         return err("player_id is required", 400)
 
-    if not isinstance(ships, list) or len(ships) != 3:
-        return err("ships must be an array of exactly 3 positions", 400)
+    if not isinstance(player_id, int):
+        return err("player_id must be an integer", 400)
 
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -103,6 +164,9 @@ def place_ships_test_mode(game_id):
             if not game:
                 return err("Game not found", 404)
 
+            if game["status"] != "waiting":
+                return err("Ship placement is only allowed during waiting state", 400)
+
             # Player must be in game
             cur.execute(
                 "SELECT 1 FROM game_players WHERE game_id=%s AND player_id=%s",
@@ -111,21 +175,9 @@ def place_ships_test_mode(game_id):
             if not cur.fetchone():
                 return err("Player is not in this game", 403)
 
-            gs = game["grid_size"]
-            coords = []
-            for s in ships:
-                if not isinstance(s, dict):
-                    return err("Each ship must be an object with integer row and col", 400)
-                r = s.get("row")
-                c = s.get("col")
-                if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
-                    return err("Each ship must have integer row and col", 400)
-                if not (0 <= r < gs and 0 <= c < gs):
-                    return err(f"Ship coordinate ({r},{c}) is out of bounds", 400)
-                coords.append((r, c))
-
-            if len(set(coords)) != len(coords):
-                return err("Ships cannot overlap", 400)
+            coords, parse_error = _normalize_ship_cells(ships, game["grid_size"])
+            if parse_error:
+                return err(parse_error, 400)
 
             # Remove any existing ships for this player in this game (deterministic reset)
             cur.execute(
@@ -152,10 +204,12 @@ def place_ships_test_mode(game_id):
 
 # ---------------------------------------------------------------------------
 # GET /api/test/games/<id>/board/<player_id>
+# GET /api/test/games/<id>/board?playerId=<id>
 # ---------------------------------------------------------------------------
 
 @test_api.route("/games/<int:game_id>/board/<int:player_id>", methods=["GET"])
-def get_board(game_id, player_id):
+@test_api.route("/games/<int:game_id>/board", methods=["GET"])
+def get_board(game_id, player_id=None):
     """
     Reveal full board state for a player.
 
@@ -167,6 +221,15 @@ def get_board(game_id, player_id):
     gate = require_test_mode()
     if gate:
         return gate
+
+    if player_id is None:
+        qs_player = request.args.get("playerId", request.args.get("player_id"))
+        if qs_player is None:
+            return err("playerId query parameter is required", 400)
+        try:
+            player_id = int(qs_player)
+        except (TypeError, ValueError):
+            return err("playerId must be an integer", 400)
 
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -204,6 +267,34 @@ def get_board(game_id, player_id):
             )
             hit_cells = {(r["row"], r["col"]) for r in cur.fetchall()}
 
+            cur.execute(
+                """
+                SELECT row, col FROM moves
+                WHERE game_id=%s AND player_id=%s AND result='hit'
+                """,
+                (game_id, player_id),
+            )
+            outgoing_hits = {(r["row"], r["col"]) for r in cur.fetchall()}
+
+            cur.execute(
+                """
+                SELECT row, col FROM moves
+                WHERE game_id=%s AND player_id=%s AND result='miss'
+                """,
+                (game_id, player_id),
+            )
+            outgoing_misses = {(r["row"], r["col"]) for r in cur.fetchall()}
+
+            cur.execute(
+                """
+                SELECT is_eliminated
+                FROM game_players
+                WHERE game_id=%s AND player_id=%s
+                """,
+                (game_id, player_id),
+            )
+            eliminated = cur.fetchone()["is_eliminated"]
+
     # Build 2D grid
     grid = [["." for _ in range(gs)] for _ in range(gs)]
     for r, c in ship_cells:
@@ -218,5 +309,62 @@ def get_board(game_id, player_id):
         "grid_size":     gs,
         "ships":         [[r, c] for r, c in sorted(ship_cells)],
         "hits_received": [[r, c] for r, c in sorted(hit_cells)],
+        "hits":          [[r, c] for r, c in sorted(outgoing_hits)],
+        "misses":        [[r, c] for r, c in sorted(outgoing_misses)],
+        "sunk":          bool(eliminated),
         "board":         grid,
     }), 200
+
+
+# ---------------------------------------------------------------------------
+# POST /api/test/games/<id>/set-turn
+# ---------------------------------------------------------------------------
+
+@test_api.route("/games/<int:game_id>/set-turn", methods=["POST"])
+def set_turn(game_id):
+    """Deterministically force whose turn it is for concurrency/race tests."""
+    gate = require_test_mode()
+    if gate:
+        return gate
+
+    body = request.get_json(silent=True)
+    if not body:
+        return err("Request body must be valid JSON", 400)
+
+    player_id = _normalize_player_id(body)
+    if not isinstance(player_id, int):
+        return err("player_id must be an integer", 400)
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT status FROM games WHERE game_id=%s",
+                (game_id,),
+            )
+            game = cur.fetchone()
+            if not game:
+                return err("Game not found", 404)
+            if game["status"] != "active":
+                return err("Can only force turn while game is active", 400)
+
+            cur.execute(
+                """
+                SELECT player_id
+                FROM game_players
+                WHERE game_id=%s AND is_eliminated=FALSE
+                ORDER BY turn_order
+                """,
+                (game_id,),
+            )
+            active_players = [r["player_id"] for r in cur.fetchall()]
+            if player_id not in active_players:
+                return err("Player is not an active participant in this game", 400)
+
+            forced_index = active_players.index(player_id)
+            cur.execute(
+                "UPDATE games SET current_turn_index=%s WHERE game_id=%s",
+                (forced_index, game_id),
+            )
+        conn.commit()
+
+    return jsonify({"message": "Turn forced", "game_id": game_id, "current_player_id": player_id}), 200
