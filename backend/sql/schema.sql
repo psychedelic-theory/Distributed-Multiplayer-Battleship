@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS moves (
     row         INT NOT NULL,
     col         INT NOT NULL,
     result      VARCHAR(4) NOT NULL CHECK (result IN ('hit', 'miss')),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (game_id, player_id, row, col)
 );
 
