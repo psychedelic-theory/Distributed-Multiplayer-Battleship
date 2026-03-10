@@ -160,6 +160,9 @@ def create_game():
     if creator_id is None or grid_size is None or max_players is None:
         return err("creator_id, grid_size, and max_players are required", 400)
 
+    if not isinstance(creator_id, int):
+        return err("creator_id must be an integer", 400)
+
     if not isinstance(grid_size, int) or not (5 <= grid_size <= 15):
         return err("grid_size must be an integer between 5 and 15", 400)
 
@@ -209,6 +212,8 @@ def join_game(game_id):
     player_id = body.get("player_id")
     if player_id is None:
         return err("player_id is required", 400)
+    if not isinstance(player_id, int):
+        return err("player_id must be an integer", 400)
 
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -333,6 +338,8 @@ def place_ships(game_id):
 
     if player_id is None:
         return err("player_id is required", 400)
+    if not isinstance(player_id, int):
+        return err("player_id must be an integer", 400)
 
     if not isinstance(ships, list) or len(ships) != 3:
         return err("ships must be an array of exactly 3 ship positions", 400)
@@ -367,6 +374,8 @@ def place_ships(game_id):
             gs = game["grid_size"]
             coords = []
             for s in ships:
+                if not isinstance(s, dict):
+                    return err("Each ship must be an object with integer row and col", 400)
                 r = s.get("row")
                 c = s.get("col")
                 if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
@@ -415,6 +424,8 @@ def fire(game_id):
 
     if player_id is None or row is None or col is None:
         return err("player_id, row, and col are required", 400)
+    if not isinstance(player_id, int):
+        return err("player_id must be an integer", 400)
 
     with get_conn() as conn:
         with conn.cursor() as cur:

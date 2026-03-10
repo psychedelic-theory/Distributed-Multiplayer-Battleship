@@ -18,7 +18,8 @@ import pytest
 import requests
 
 BASE = os.environ.get("TEST_BASE_URL", "http://localhost:5000")
-TEST_HEADER = {"X-Test-Password": "clemson-test-2026", "Content-Type": "application/json"}
+TEST_HEADER = {"X-Test-Mode": "clemson-test-2026", "Content-Type": "application/json"}
+LEGACY_TEST_HEADER = {"X-Test-Password": "clemson-test-2026", "Content-Type": "application/json"}
 HEADERS = {"Content-Type": "application/json"}
 
 
@@ -126,6 +127,14 @@ class TestCreatePlayer:
 # ---------------------------------------------------------------------------
 
 class TestCreateGame:
+    def test_creator_id_must_be_int(self):
+        r = requests.post(
+            f"{BASE}/api/games",
+            json={"creator_id": "not-an-int", "grid_size": 10, "max_players": 2},
+            headers=HEADERS,
+        )
+        assert r.status_code == 400
+
     def test_grid_size_too_small(self):
         p = create_player("gs1")
         r = requests.post(f"{BASE}/api/games", json={"creator_id": p, "grid_size": 4, "max_players": 2})
@@ -157,6 +166,16 @@ class TestCreateGame:
 # ---------------------------------------------------------------------------
 
 class TestJoinGame:
+    def test_player_id_type_rejected(self):
+        p1 = create_player("jt1")
+        gid = create_game(p1, max_players=2)
+        r = requests.post(
+            f"{BASE}/api/games/{gid}/join",
+            json={"player_id": "bad-type"},
+            headers=HEADERS,
+        )
+        assert r.status_code == 400
+
     def test_duplicate_join(self):
         p1 = create_player("j1")
         p2 = create_player("j2")
@@ -186,6 +205,26 @@ class TestJoinGame:
 # ---------------------------------------------------------------------------
 
 class TestPlaceShips:
+    def test_player_id_type_rejected(self):
+        p = create_player("pltype")
+        gid = create_game(p, max_players=1)
+        r = requests.post(
+            f"{BASE}/api/games/{gid}/place",
+            json={"player_id": "bad-type", "ships": [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}]},
+            headers=HEADERS,
+        )
+        assert r.status_code == 400
+
+    def test_ship_entry_must_be_object(self):
+        p = create_player("plobj")
+        gid = create_game(p, max_players=1)
+        r = requests.post(
+            f"{BASE}/api/games/{gid}/place",
+            json={"player_id": p, "ships": ["bad", {"row": 1, "col": 1}, {"row": 2, "col": 2}]},
+            headers=HEADERS,
+        )
+        assert r.status_code == 400
+
     def test_must_be_exactly_3(self):
         p = create_player("pl1")
         gid = create_game(p, max_players=1)
@@ -233,6 +272,15 @@ class TestPlaceShips:
 # ---------------------------------------------------------------------------
 
 class TestFire:
+    def test_player_id_type_rejected(self):
+        gid, p1, p2 = setup_active_game()
+        r = requests.post(
+            f"{BASE}/api/games/{gid}/fire",
+            json={"player_id": "bad-type", "row": 0, "col": 0},
+            headers=HEADERS,
+        )
+        assert r.status_code == 400
+
     def test_wrong_player_turn(self):
         gid, p1, p2 = setup_active_game()
         # p2 fires before it's their turn (p1 goes first)
@@ -374,7 +422,7 @@ class TestModeGating:
         if test_mode != "true":
             r = requests.get(
                 f"{BASE}/api/test/games/{gid}/board/{p}",
-                headers={"X-Test-Password": "clemson-test-2026"},
+                headers=TEST_HEADER,
             )
             assert r.status_code == 403
 
@@ -387,6 +435,18 @@ class TestModeGating:
             r = requests.get(f"{BASE}/api/test/games/{gid}/board/{p}")
             assert r.status_code == 403
 
+    def test_test_endpoints_legacy_header_still_works(self):
+        """When TEST_MODE=true, legacy X-Test-Password is still accepted."""
+        test_mode = os.environ.get("TEST_MODE", "false").lower()
+        if test_mode == "true":
+            p = create_player("tg-legacy")
+            gid = create_game(p, max_players=1)
+            r = requests.get(
+                f"{BASE}/api/test/games/{gid}/board/{p}",
+                headers=LEGACY_TEST_HEADER,
+            )
+            assert r.status_code == 200
+
     def test_test_endpoints_wrong_password(self):
         """When TEST_MODE=true, wrong header → 403."""
         test_mode = os.environ.get("TEST_MODE", "false").lower()
@@ -395,7 +455,7 @@ class TestModeGating:
             gid = create_game(p, max_players=1)
             r = requests.get(
                 f"{BASE}/api/test/games/{gid}/board/{p}",
-                headers={"X-Test-Password": "wrong-password"},
+                headers={"X-Test-Mode": "wrong-password"},
             )
             assert r.status_code == 403
 
@@ -411,7 +471,7 @@ class TestModeGating:
 
         r = requests.get(
             f"{BASE}/api/test/games/{gid}/board/{p}",
-            headers={"X-Test-Password": "clemson-test-2026"},
+            headers=TEST_HEADER,
         )
         assert r.status_code == 200
         data = r.json()
@@ -434,7 +494,7 @@ class TestModeGating:
 
         r = requests.post(
             f"{BASE}/api/test/games/{gid}/restart",
-            headers={"X-Test-Password": "clemson-test-2026"},
+            headers=TEST_HEADER,
         )
         assert r.status_code == 200
 

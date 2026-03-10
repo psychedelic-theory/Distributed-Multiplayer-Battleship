@@ -10,7 +10,8 @@ import os
 from flask import request, jsonify
 
 TEST_PASSWORD = "clemson-test-2026"
-TEST_HEADER   = "X-Test-Password"
+# Primary header matches grading appendix; legacy header kept for compatibility.
+TEST_HEADERS = ("X-Test-Mode", "X-Test-Password")
 
 
 def require_test_mode():
@@ -21,7 +22,13 @@ def require_test_mode():
     if os.environ.get("TEST_MODE", "false").lower() != "true":
         return jsonify({"error": "Test mode is disabled"}), 403
 
-    provided = request.headers.get(TEST_HEADER, "")
+    provided = ""
+    for h in TEST_HEADERS:
+        v = request.headers.get(h, "")
+        if v:
+            provided = v
+            break
+
     if provided != TEST_PASSWORD:
         return jsonify({"error": "Invalid or missing test password header"}), 403
 

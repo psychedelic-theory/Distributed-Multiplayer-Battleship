@@ -71,7 +71,7 @@ def restart_game(game_id):
 # ---------------------------------------------------------------------------
 
 @test_api.route("/games/<int:game_id>/ships", methods=["POST"])
-def test_place_ships(game_id):
+def place_ships_test_mode(game_id):
     """
     Deterministic ship placement for grading.
     Same validation rules as production place, but bypasses the 'placed twice' guard
@@ -114,6 +114,8 @@ def test_place_ships(game_id):
             gs = game["grid_size"]
             coords = []
             for s in ships:
+                if not isinstance(s, dict):
+                    return err("Each ship must be an object with integer row and col", 400)
                 r = s.get("row")
                 c = s.get("col")
                 if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):

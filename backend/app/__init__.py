@@ -32,7 +32,7 @@ def create_app(test_config=None):
         r"/api/*":{
             "origins": "*",
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "X-Test-Password"],
+            "allow_headers": ["Content-Type", "X-Test-Mode", "X-Test-Password"],
         }
     })
 
@@ -48,7 +48,7 @@ def create_app(test_config=None):
     def add_cors_headers(response):
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Test-Password"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Test-Mode, X-Test-Password"
         return response
     # Initialize DB schema on startup (idempotent)
     with app.app_context():
