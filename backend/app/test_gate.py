@@ -10,8 +10,8 @@ import os
 from flask import request, jsonify
 
 TEST_PASSWORD = "clemson-test-2026"
-# Primary header matches grading appendix; legacy header kept for compatibility.
-TEST_HEADERS = ("X-Test-Mode", "X-Test-Password")
+# Grader password header first; X-Test-Mode also accepted for compatibility.
+TEST_HEADERS = ("X-Test-Password", "X-Test-Mode")
 
 
 def _is_test_mode_enabled() -> bool:
