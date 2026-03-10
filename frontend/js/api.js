@@ -33,6 +33,7 @@ async function request(method, path, body = null) {
 export const api = {
   // ── Players ──────────────────────────────────
   createPlayer: (username)     => request('POST', '/players', { username }),
+  getPlayer:    (playerId)     => request('GET',  `/players/${playerId}`),
   getStats:     (playerId)     => request('GET',  `/players/${playerId}/stats`),
 
   // ── Games ────────────────────────────────────

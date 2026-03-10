@@ -121,19 +121,20 @@ export function LobbyScreen({ onNavigate }) {
     }
   });
 
-  // Load existing player via stats
+  // Load existing player via profile + stats
   loadBtn.addEventListener('click', async () => {
     const id = parseInt(playerIdInput.getValue(), 10);
     if (!id) { playerIdInput.setError('Valid ID required'); return; }
     playerIdInput.setError('');
     loadBtn.setLoading(true);
     try {
-      const stats = await api.getStats(id);
-      // Synthesize username from ID since GET /players/:id doesn't return it
-      const guessedName = `Commander #${id}`;
-      store.set({ playerId: id, username: guessedName });
-      showToast({ message: `Identity #${id} loaded`, type: 'success' });
-      onIdentityLoaded(id, guessedName, stats);
+      const [player, stats] = await Promise.all([
+        api.getPlayer(id),
+        api.getStats(id),
+      ]);
+      store.set({ playerId: id, username: player.username });
+      showToast({ message: `Commander "${player.username}" loaded`, type: 'success' });
+      onIdentityLoaded(id, player.username, stats);
     } catch (e) {
       showToast({ message: 'Player not found', type: 'error' });
     } finally {
