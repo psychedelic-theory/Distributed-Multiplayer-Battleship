@@ -13,6 +13,10 @@ def get_conn():
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         raise RuntimeError("DATABASE_URL environment variable is not set.")
+    
+    if dsn.startswith("postgres://"):
+        # psycopg3 expects "postgresql://" scheme; convert if needed
+        dsn = dsn.replace("postgres://", "postgresql://", 1)
     return psycopg.connect(dsn, row_factory=dict_row)
 
 
