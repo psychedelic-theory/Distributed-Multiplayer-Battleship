@@ -215,7 +215,7 @@ export function LobbyScreen({ onNavigate }) {
       createGameBtn.setLoading(true);
       try {
         const { game_id } = await api.createGame(store.get('playerId'), gs, mp);
-        store.set({ gameId: game_id, gridSize: gs, maxPlayers: mp });
+        store.set({ gameId: game_id, gridSize: gs, maxPlayers: mp, myTurnOrder: 0 });
         showToast({ message: `Battle #${game_id} created`, type: 'success' });
         onNavigate('placement');
       } catch (e) {
@@ -246,7 +246,7 @@ export function LobbyScreen({ onNavigate }) {
       try {
         await api.joinGame(gameId, store.get('playerId'));
         const game = await api.getGame(gameId);
-        store.set({ gameId, gridSize: game.grid_size, maxPlayers: game.max_players });
+        store.set({ gameId, gridSize: game.grid_size, maxPlayers: game.max_players, myTurnOrder: game.active_players - 1, });
         showToast({ message: `Joined Battle #${gameId}`, type: 'success' });
         onNavigate('placement');
       } catch (e) {

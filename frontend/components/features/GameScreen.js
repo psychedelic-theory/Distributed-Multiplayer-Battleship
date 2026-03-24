@@ -17,6 +17,7 @@ export function GameScreen({ onNavigate }) {
   const playerId = store.get('playerId');
   const gridSize = store.get('gridSize') || 10;
   const myShips  = store.get('myShips')  || [];
+  const myTurnOrder = store.get('myTurnOrder');
 
   let pollInterval = null;
   let myShots      = [];   // {row,col,result}
@@ -154,7 +155,7 @@ export function GameScreen({ onNavigate }) {
       }
 
       // FIX: Use parseInt for safe comparison (guards against type mismatch)
-      isMyTurn = (parseInt(next_player_id, 10) === parseInt(playerId, 10));
+      isMyTurn = false;
       updateTurnIndicator();
       if (!isMyTurn) {
         attackGrid.setDisabled(true);
@@ -192,14 +193,7 @@ export function GameScreen({ onNavigate }) {
       updateHudStatus(game);
 
       if (game.status === 'active') {
-        const activePid = game.current_player_id;
-        // Backend is source-of-truth for turn ownership
-        isMyTurn = (parseInt(activePid, 10) === parseInt(playerId, 10));
-
-        console.log('[POLL] turn_index:', game.current_turn_index,
-                    'activePid:', activePid, '(type:', typeof activePid, ')',
-                    'playerId:', playerId, '(type:', typeof playerId, ')',
-                    'isMyTurn:', isMyTurn);
+        isMyTurn = (game.current_turn_index === myTurnOrder);
 
         updateTurnIndicator();
 
@@ -214,11 +208,7 @@ export function GameScreen({ onNavigate }) {
 
       if (game.status === 'finished') {
         stopPolling();
-        // Find winner from players list
-        const activePlayers = (game.players || []).filter(p => !p.is_eliminated);
-        if (activePlayers.length === 1) {
-          store.set({ winnerId: activePlayers[0].player_id });
-        }
+        
         setTimeout(() => onNavigate('results'), 1500);
       }
 
@@ -321,21 +311,9 @@ export function GameScreen({ onNavigate }) {
       updateHudStatus(game);
       syncMoves(movesRes.moves || []);
 
-      console.log('[INIT] game.status:', game.status,
-                  'current_turn_index:', game.current_turn_index,
-                  'playerId:', playerId, '(type:', typeof playerId, ')',
-                  'players:', JSON.stringify(game.players));
-
       // FIX: Evaluate turn state if game is already active
       if (game.status === 'active') {
-        const activePid = game.current_player_id;
-
-        console.log('[INIT] resolvedPlayer:', activePid, '(type:', typeof activePid, ')');
-
-        // FIX: parseInt on both sides to prevent string vs number mismatch
-        isMyTurn = (parseInt(activePid, 10) === parseInt(playerId, 10));
-
-        console.log('[INIT] isMyTurn:', isMyTurn);
+        isMyTurn = (game.current_turn_index === myTurnOrder);
 
         updateTurnIndicator();
         attackGrid.setDisabled(!isMyTurn);

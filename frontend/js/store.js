@@ -7,6 +7,7 @@ const _state = {
   // Identity
   playerId:   null,
   username:   null,
+  myTurnOrder: null, // 0 or 1 for turn order in game
 
   // Current game
   gameId:       null,
