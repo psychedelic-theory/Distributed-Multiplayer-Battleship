@@ -419,7 +419,7 @@ def fire(game_id):
 
             # 403: game not active
             if game["status"] != "active":
-                return err("Game is not active", 403)
+                return err("Game is not active", 409)
 
             # 403: player must be in this game
             cur.execute(
