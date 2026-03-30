@@ -110,6 +110,7 @@ def advance_turn(cur, game_id, current_turn_index):
         return current_turn_index, None, True
 
     # Advance index within the non-eliminated list
+    rebased = current_turn_index % len(active)
     next_idx = (current_turn_index + 1) % len(active)
     next_player_id = active[next_idx]["player_id"]
     return next_idx, next_player_id, False

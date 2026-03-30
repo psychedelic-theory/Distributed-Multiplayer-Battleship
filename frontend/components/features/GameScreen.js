@@ -193,7 +193,7 @@ export function GameScreen({ onNavigate }) {
       updateHudStatus(game);
 
       if (game.status === 'active') {
-        isMyTurn = (game.current_turn_index === myTurnOrder);
+        isMyTurn = (game.current_player_id === parseInt(playerId, 10));
 
         updateTurnIndicator();
 
