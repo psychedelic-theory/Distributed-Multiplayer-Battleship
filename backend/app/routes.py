@@ -18,6 +18,7 @@ from .game_logic import (
     count_active_players,
     advance_turn,
     update_stats_on_finish,
+    get_current_player_id,
 )
 
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -274,6 +275,8 @@ def join_game(game_id):
 
 @api.route("/games/<int:game_id>", methods=["GET"])
 def get_game(game_id):
+    current_player_id = None
+
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -301,6 +304,7 @@ def get_game(game_id):
         "status":              game["status"],
         "current_turn_index":  game["current_turn_index"],
         "active_players":      active_players,
+        "current_player_id":   current_player_id,
     }), 200
 
 
