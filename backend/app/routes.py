@@ -293,6 +293,8 @@ def get_game(game_id):
             )
             active_players = cur.fetchone()["cnt"]
 
+            get_current_player_id = get_current_player_id(cur, game_id, game["current_turn_index"])
+
     return jsonify({
         "game_id":             game["game_id"],
         "grid_size":           game["grid_size"],
