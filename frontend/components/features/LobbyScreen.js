@@ -246,6 +246,10 @@ export function LobbyScreen({ onNavigate }) {
       try {
         await api.joinGame(gameId, store.get('playerId'));
         const game = await api.getGame(gameId);
+        // FIX: don't guess turn order from active_players count.
+        // myTurnOrder is kept for legacy HUD display only — turn logic now uses current_player_id.
+        // active_players after joining = total joined count, joiner is last = count - 1
+        const joinedPlayerID = store.get('playerId');
         store.set({ gameId, gridSize: game.grid_size, maxPlayers: game.max_players, myTurnOrder: game.active_players - 1, });
         showToast({ message: `Joined Battle #${gameId}`, type: 'success' });
         onNavigate('placement');

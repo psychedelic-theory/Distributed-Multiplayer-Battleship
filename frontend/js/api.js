@@ -46,7 +46,14 @@ export const api = {
     request('POST', `/games/${gameId}/place`, { player_id: playerId, ships }),
   fire:        (gameId, playerId, row, col) =>
     request('POST', `/games/${gameId}/fire`, { player_id: playerId, row, col }),
-  getMoves:    (gameId) => request('GET', `/games/${gameId}/moves`),
+  getMoves:    async (gameId) => {
+    try {
+      return await request('GET', `/games/${gameId}/moves`);
+    } catch (err) {
+      if (err.status === 404 || err.status === 404) return {moves: [] };
+      throw err;
+    }
+  },
 
   // ── Reset ────────────────────────────────────
   reset: () => request('POST', '/reset'),

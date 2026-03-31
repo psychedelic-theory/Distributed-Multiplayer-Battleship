@@ -313,16 +313,18 @@ export function GameScreen({ onNavigate }) {
 
       // FIX: Evaluate turn state if game is already active
       if (game.status === 'active') {
-        isMyTurn = (game.current_turn_index === myTurnOrder);
+        isMyTurn = (game.current_player_id === parseInt(playerId, 10));
 
         updateTurnIndicator();
         attackGrid.setDisabled(!isMyTurn);
-      }
 
-      // Only poll if it's not our turn (or game isn't active yet)
+      // It's already out turn on load - no need to poll  
       if (!isMyTurn) {
-        startPolling();
+        return;
       }
+    }
+
+    startPolling();
 
     } catch (e) {
       console.error('[INIT] error:', e);
