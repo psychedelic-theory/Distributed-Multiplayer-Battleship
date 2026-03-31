@@ -157,12 +157,10 @@ export function GameScreen({ onNavigate }) {
       // FIX: Use parseInt for safe comparison (guards against type mismatch)
       isMyTurn = false;
       updateTurnIndicator();
-      if (!isMyTurn) {
-        attackGrid.setDisabled(true);
-        startPolling();
-      } else {
-        attackGrid.setDisabled(false);
-      }
+      attackGrid.setDisabled(true);
+      
+      stopPolling();
+      startPolling();
 
     } catch (e) {
       showToast({ message: e.message, type: 'error' });
@@ -197,9 +195,12 @@ export function GameScreen({ onNavigate }) {
 
         updateTurnIndicator();
 
-        if (isMyTurn) {
+        if (isMyTurn && !wasMyTurn) {
+          // Turn just became ours - stop polling and enable attack grid
           stopPolling();
           attackGrid.setDisabled(false);
+        } else if (!isMyTurn) {
+          attackGrid.setDisabled(true);
         }
       }
 
@@ -208,7 +209,7 @@ export function GameScreen({ onNavigate }) {
 
       if (game.status === 'finished') {
         stopPolling();
-        
+        store.set({winnerId: game.winner_id, gameStatus: 'finished'});
         setTimeout(() => onNavigate('results'), 1500);
       }
 
@@ -314,7 +315,6 @@ export function GameScreen({ onNavigate }) {
       // FIX: Evaluate turn state if game is already active
       if (game.status === 'active') {
         isMyTurn = (game.current_player_id === parseInt(playerId, 10));
-
         updateTurnIndicator();
         attackGrid.setDisabled(!isMyTurn);
 
@@ -322,8 +322,11 @@ export function GameScreen({ onNavigate }) {
       if (!isMyTurn) {
         return;
       }
+    } else {
+      updateTurnIndicator();
     }
 
+    // Start polling: either waiting for game to start, or waiting for our turn
     startPolling();
 
     } catch (e) {
