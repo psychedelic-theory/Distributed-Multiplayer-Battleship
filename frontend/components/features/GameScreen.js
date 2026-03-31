@@ -17,12 +17,12 @@ export function GameScreen({ onNavigate }) {
   const playerId = store.get('playerId');
   const gridSize = store.get('gridSize') || 10;
   const myShips  = store.get('myShips')  || [];
-  const myTurnOrder = store.get('myTurnOrder');
 
   let pollInterval = null;
   let myShots      = [];   // {row,col,result}
   let lastMoveId   = 0;
   let isMyTurn     = false;
+  let wasMyTurn    = false; // tracks previous turn state to detect turn transitions
   let gameStatus   = 'waiting';
 
   // ── Layout ─────────────────────────────────────────────
@@ -134,7 +134,7 @@ export function GameScreen({ onNavigate }) {
       const res = await api.fire(gameId, playerId, row, col);
       const { result, next_player_id, game_status, winner_id } = res;
 
-      // Update attack board
+      // Update attack board immediately
       attackGrid.updateCell(row, col, result);
       myShots.push({ row, col, result });
       updateHudStats();
@@ -149,17 +149,20 @@ export function GameScreen({ onNavigate }) {
         stopPolling();
         gameStatus = 'finished';
         store.set({ winnerId: winner_id, gameStatus: 'finished' });
-        showToast({ message: winner_id === playerId ? '🏆 Victory! You win!' : 'Defeat — better luck next time', type: winner_id === playerId ? 'success' : 'error', duration: 5000 });
+        showToast({
+          message: winner_id === parseInt(playerId, 10) ? '🏆 Victory! You win!' : 'Defeat — better luck next time',
+          type: winner_id === parseInt(playerId, 10) ? 'success' : 'error',
+          duration: 5000,
+        });
         setTimeout(() => onNavigate('results'), 2500);
         return;
       }
 
-      // FIX: Use parseInt for safe comparison (guards against type mismatch)
+      // Turn passed to enemy — start polling to detect when it comes back
+      wasMyTurn = true;
       isMyTurn = false;
       updateTurnIndicator();
       attackGrid.setDisabled(true);
-      
-      stopPolling();
       startPolling();
 
     } catch (e) {
@@ -191,12 +194,14 @@ export function GameScreen({ onNavigate }) {
       updateHudStatus(game);
 
       if (game.status === 'active') {
+        // FIX: Use current_player_id from backend (not index comparison)
+        wasMyTurn = isMyTurn;
         isMyTurn = (game.current_player_id === parseInt(playerId, 10));
 
         updateTurnIndicator();
 
         if (isMyTurn && !wasMyTurn) {
-          // Turn just became ours - stop polling and enable attack grid
+          // Turn just became ours — stop polling and enable attack
           stopPolling();
           attackGrid.setDisabled(false);
         } else if (!isMyTurn) {
@@ -204,12 +209,12 @@ export function GameScreen({ onNavigate }) {
         }
       }
 
-      // Sync new moves onto grids
+      // Sync all new moves onto grids (updates enemy defense board too)
       syncMoves(movesRes.moves || []);
 
       if (game.status === 'finished') {
         stopPolling();
-        store.set({winnerId: game.winner_id, gameStatus: 'finished'});
+        store.set({ winnerId: game.winner_id, gameStatus: 'finished' });
         setTimeout(() => onNavigate('results'), 1500);
       }
 
@@ -218,27 +223,28 @@ export function GameScreen({ onNavigate }) {
     }
   }
 
+  // ── Move sync ─────────────────────────────────────────────
   function syncMoves(moves) {
-    const log  = el.querySelector('#move-log');
+    const log = el.querySelector('#move-log');
     const newMoves = moves.slice(lastMoveId);
     lastMoveId = moves.length;
 
     newMoves.forEach(m => {
-      // FIX: parseInt for safe comparison
       const isMine = (parseInt(m.player_id, 10) === parseInt(playerId, 10));
 
-      // Update defense grid if someone hit our ship
+      // Update defense grid when an enemy shot hits one of our ships
       if (!isMine && m.result === 'hit') {
         const isMyShip = myShips.some(s => s.row === m.row && s.col === m.col);
         if (isMyShip) defenseGrid.updateCell(m.row, m.col, 'hit');
       }
-      // Update attack grid with shots we already fired (sync)
+
+      // Update attack grid with our own shots (catches any we might have missed)
       if (isMine && !myShots.some(s => s.row === m.row && s.col === m.col)) {
         myShots.push({ row: m.row, col: m.col, result: m.result });
         attackGrid.updateCell(m.row, m.col, m.result);
       }
 
-      // Log entry
+      // Add to battle log
       const entry = document.createElement('div');
       entry.className = `move-entry move-entry--${m.result}${isMine ? ' move-entry--mine' : ''}`;
       entry.style.animation = `slideInRight var(--dur-base) var(--ease-out) both`;
@@ -290,8 +296,7 @@ export function GameScreen({ onNavigate }) {
     }
     if (isMyTurn) {
       ind.innerHTML = `<span class="badge badge--your-turn"><span class="dot dot--active"></span>Your Turn — Fire!</span>`;
-      const grid = el.querySelector('#attack-grid-wrap .battle-grid');
-      grid?.classList.add('battle-grid--active-turn');
+      el.querySelector('#attack-grid-wrap .battle-grid')?.classList.add('battle-grid--active-turn');
     } else {
       ind.innerHTML = `<span class="badge badge--waiting"><span class="dot dot--waiting"></span>Enemy's Turn</span>`;
       el.querySelector('#attack-grid-wrap .battle-grid')?.classList.remove('battle-grid--active-turn');
@@ -306,28 +311,28 @@ export function GameScreen({ onNavigate }) {
         api.getMoves(gameId),
       ]);
 
-      // FIX: Always set gameStatus and sync state first
       gameStatus = game.status;
       store.set({ gameStatus });
       updateHudStatus(game);
       syncMoves(movesRes.moves || []);
 
-      // FIX: Evaluate turn state if game is already active
       if (game.status === 'active') {
+        // FIX: Use current_player_id, not index comparison
         isMyTurn = (game.current_player_id === parseInt(playerId, 10));
+        wasMyTurn = isMyTurn;
         updateTurnIndicator();
         attackGrid.setDisabled(!isMyTurn);
 
-      // It's already out turn on load - no need to poll  
-      if (!isMyTurn) {
-        return;
+        if (isMyTurn) {
+          // It's already our turn — no polling needed until after we fire
+          return;
+        }
+      } else {
+        updateTurnIndicator();
       }
-    } else {
-      updateTurnIndicator();
-    }
 
-    // Start polling: either waiting for game to start, or waiting for our turn
-    startPolling();
+      // Poll while waiting for game to start or for our turn
+      startPolling();
 
     } catch (e) {
       console.error('[INIT] error:', e);
