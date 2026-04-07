@@ -1,0 +1,93 @@
+{
+  "team_name": "Willing To Relocate",
+  "api_version": "2.3",
+  "tests": [
+    {
+      "name": "Stats reflect zero activity for a player who never fired",
+      "why": "Catches implementations that return 404 or crash on players with no game history instead of returning zeroed stats.",
+      "method": "GET",
+      "endpoint": "/api/players/1/stats",
+      "headers": {
+        "X-Test-Password": "clemson-test-2026"
+      },
+      "body": null,
+      "expected_status": 200,
+      "expected_response_contains": {
+        "games_played": 0,
+        "wins": 0,
+        "losses": 0,
+        "total_shots": 0,
+        "total_hits": 0,
+        "accuracy": 0.0
+      }
+    },
+    {
+      "name": "Fire at out-of-bounds coordinates on active game",
+      "why": "Ensures coordinate bounds are validated before inserting into the moves table, preventing corrupt game state.",
+      "method": "POST",
+      "endpoint": "/api/game/fire",
+      "headers": {
+        "X-Test-Password": "clemson-test-2026"
+      },
+      "body": {
+        "player_id": 1,
+        "row": 99,
+        "col": -1
+      },
+      "expected_status": 400,
+      "expected_response_contains": {
+        "error": "..."
+      }
+    },
+    {
+      "name": "Fourth player cannot join a 3-player game",
+      "why": "Verifies max_players capacity enforcement so a full lobby correctly rejects late arrivals.",
+      "method": "POST",
+      "endpoint": "/api/games/{id}/join",
+      "headers": {
+        "X-Test-Password": "clemson-test-2026"
+      },
+      "body": {
+        "player_id": 4
+      },
+      "expected_status": 400,
+      "expected_response_contains": {
+        "error": "..."
+      }
+    },
+    {
+      "name": "Reject fire request with a missing authentication header",
+      "why": "Confirms protected endpoints are consistently enforcing authentication and do not allow unauthenticated game actions to slip through.",
+      "method": "POST",
+      "endpoint": "/api/game/fire",
+      "headers": {},
+      "body": {
+        "playerId": 1,
+        "row": 0,
+        "col": 0
+      },
+      "expected_status": 401,
+      "expected_response_contains": {
+        "error": "..."
+      }
+    },
+    {
+      "name": "Fire twice at the same cell in the same game",
+      "why": "Catches implementations that fail to track prior moves correctly and allow duplicate shots that would corrupt game stats.",
+      "method": "POST",
+      "endpoint": "/api/game/fire",
+      "headers": {
+        "X-Test-Password": "clemson-test-2026"
+      },
+      "body": {
+        "playerId": 1,
+        "row": 0,
+        "col": 0
+      },
+      "expected_status": 409,
+      "expected_response_contains": {
+        "error": "..."
+      }
+    }
+  ]
+}
