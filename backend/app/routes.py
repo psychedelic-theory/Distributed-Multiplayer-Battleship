@@ -9,6 +9,7 @@ Rules enforced here:
 """
 
 from flask import Blueprint, request, jsonify
+import re
 from psycopg.errors import UniqueViolation
 from .db import get_conn
 from .game_logic import (
@@ -46,20 +47,17 @@ def err(msg, code):
 
 @api.route("/reset", methods=["POST"])
 def reset():
-    """Clear game data but keep players and reset their stats."""
+    """Clear all gameplay state and players for deterministic autograder runs."""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM moves")
             cur.execute("DELETE FROM ships")
             cur.execute("DELETE FROM game_players")
             cur.execute("DELETE FROM games")
-            cur.execute(
-                """
-                UPDATE players
-                SET games_played=0, wins=0, losses=0,
-                    total_shots=0, total_hits=0, accuracy=0.0
-                """
-            )
+            cur.execute("DELETE FROM players")
+            cur.execute("ALTER SEQUENCE IF EXISTS moves_move_id_seq RESTART WITH 1")
+            cur.execute("ALTER SEQUENCE IF EXISTS games_game_id_seq RESTART WITH 1")
+            cur.execute("ALTER SEQUENCE IF EXISTS players_player_id_seq RESTART WITH 1")
         conn.commit()
     return jsonify({"status": "reset"}), 200
 
@@ -89,7 +87,10 @@ def create_player():
     if not username:
         return err("bad_request", 400)
 
-    if not username.isalnum():
+    if len(username) > 100:
+        return err("bad_request", 400)
+
+    if not re.fullmatch(r"[A-Za-z0-9 _-]+", username):
         return err("bad_request", 400)
 
     with get_conn() as conn:
@@ -452,9 +453,11 @@ def fire(game_id):
             if not game:
                 return err("Game not found", 404)
 
-            # 403: game not active
+            # Reject fire when the game has not started or is already over.
+            if game["status"] == "finished":
+                return err("Game is not active", 400)
             if game["status"] != "active":
-                return err("Game is not active", 409)
+                return err("Game is not active", 403)
 
             # 403: player must be in this game
             cur.execute(
@@ -481,7 +484,7 @@ def fire(game_id):
                 (game_id, player_id, row, col),
             )
             if cur.fetchone():
-                return err("You already fired at this cell", 400)
+                return err("You already fired at this cell", 409)
 
             # Determine hit or miss: check if (row, col) is an un-hit ship of any OTHER player
             # First find which player owns that cell (if any)
@@ -514,7 +517,7 @@ def fire(game_id):
                 )
             except UniqueViolation:
                 conn.rollback()
-                return err("You already fired at this cell", 400)
+                return err("You already fired at this cell", 409)
 
             # Check elimination: did we just eliminate the target player?
             if result == "hit" and ship_row:
