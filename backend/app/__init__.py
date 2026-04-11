@@ -1,36 +1,64 @@
+"""
+__init__.py — Flask application factory.
+
+Usage:
+    export FLASK_APP=app
+    flask run
+
+Or via create_app() directly in tests.
+"""
+
 import os
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+from .db import init_db
+from .routes import api
+from .test_routes import test_api
 
-db = SQLAlchemy()
 
+def create_app(test_config=None):
+    """
+    Application factory. Reads configuration from environment variables.
 
-def create_app():
-    app = Flask(__name__)
+    Required env vars:
+        DATABASE_URL   — PostgreSQL DSN (e.g. postgresql://user:pass@host/dbname)
 
-    # --- DATABASE CONFIG ---
-    database_url = os.getenv("DATABASE_URL")
+    Optional env vars:
+        TEST_MODE      — "true" to enable /api/test/* endpoints (default: "false")
+        FLASK_DEBUG    — "1" or "true" for debug mode
+    """
+    app = Flask(__name__, instance_relative_config=False)
+    CORS(app, resources={
+        r"/api/*":{
+            "origins": "*",
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "X-Test-Mode", "X-Test-Password"],
+        }
+    })
 
-    if database_url:
-        # Fix for Render / some deployments that use postgres:// instead of postgresql://
-        if database_url.startswith("postgres://"):
-            database_url = database_url.replace("postgres://", "postgresql://", 1)
+    # Allow override for unit tests
+    if test_config:
+        app.config.update(test_config)
 
-        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
-    else:
-        # Fallback for local or missing env var (important for autograder stability)
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
+    # Register blueprints
+    app.register_blueprint(api)
+    app.register_blueprint(test_api)
 
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-    db.init_app(app)
-
-    # --- REGISTER ROUTES ---
-    from app.routes import main
-    app.register_blueprint(main)
-
-    # --- ENSURE TABLES EXIST ---
+    # Manual CORS fallback for proxies that strip headers
+    def add_cors_headers(response):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Test-Mode, X-Test-Password"
+        return response
+    
+    app.after_request(add_cors_headers)
+    
+    # Initialize DB schema on startup (idempotent)
     with app.app_context():
-        db.create_all()
+        init_db()
 
     return app
+
+
+# Expose app at module level for `flask run` and Gunicorn
+app = create_app()
