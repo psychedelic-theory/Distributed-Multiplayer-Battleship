@@ -1,0 +1,2733 @@
+[
+  {
+    "name": "Create game",
+    "why": "Ensures a game can be created successfully.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0001"
+  },
+  {
+    "name": "Join game successfully",
+    "why": "Confirms that a valid player can join a game in setup phase.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 2
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "joined"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0002"
+  },
+  {
+    "name": "Fire out of turn",
+    "why": "Ensures the server prevents firing when it is not the player's turn.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "forbidden"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0003"
+  },
+  {
+    "name": "Duplicate fire attempt",
+    "why": "Ensures the server prevents firing at the same coordinate twice.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 2,
+      "row": 3,
+      "col": 4
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "conflict"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0004"
+  },
+  {
+    "name": "Invalid game ID",
+    "why": "Verifies that accessing a non-existent game returns an error.",
+    "method": "GET",
+    "endpoint": "/api/games/999",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "not_found"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0005"
+  },
+  {
+    "name": "Create player with valid username",
+    "why": "Verifies that a new player is created and receives a server-generated integer player_id.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "testplayer"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": 1
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0006"
+  },
+  {
+    "name": "Reject invalid username with special characters",
+    "why": "Ensures the server enforces the alphanumeric-plus-underscores username pattern and returns a descriptive error.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "bad!!name"
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0007"
+  },
+  {
+    "name": "Create game with valid parameters",
+    "why": "Verifies that a new game is created in waiting_setup status with the correct grid size.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 10,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0008"
+  },
+  {
+    "name": "Reject game creation with grid_size below minimum",
+    "why": "Ensures the server rejects grid sizes below the allowed minimum of 5.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 3,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0009"
+  },
+  {
+    "name": "Reject firing out of turn",
+    "why": "Ensures the server enforces turn order and returns 403 when a player fires out of turn.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 2,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "forbidden"
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0010"
+  },
+  {
+    "name": "Reject duplicate fire at same cell",
+    "why": "Ensures the server returns 409 Conflict when a player fires at coordinates they already targeted.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "conflict"
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0011"
+  },
+  {
+    "name": "Get game detail returns correct structure",
+    "why": "Verifies that GET game detail returns players array with ships_remaining and current_turn_player_id.",
+    "method": "GET",
+    "endpoint": "/api/games/1",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "playing"
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0012"
+  },
+  {
+    "name": "Reject joining a non-existent game",
+    "why": "Ensures the server returns 404 when attempting to join a game that does not exist.",
+    "method": "POST",
+    "endpoint": "/api/games/99999/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "not_found"
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0013"
+  },
+  {
+    "name": "Player stats return correct fields",
+    "why": "Verifies that player stats endpoint returns all required fields including accuracy as a float.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "accuracy": 0
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0014"
+  },
+  {
+    "name": "Health endpoint returns ok status",
+    "why": "Verifies the health check endpoint is responsive and returns the expected status.",
+    "method": "GET",
+    "endpoint": "/api/health",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "ok"
+    },
+    "source_team": "Team0x03",
+    "test_id": "T0015"
+  },
+  {
+    "name": "Force username",
+    "why": "Ensures all players have a username.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": ""
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": true
+    },
+    "source_team": "Team0x10",
+    "test_id": "T0016"
+  },
+  {
+    "name": "Show board state for valid game's valid player",
+    "why": "Allows visualization of the board.",
+    "method": "GET",
+    "endpoint": "/api/test/games/:id/board/:player_id",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "board": [
+        "O ~ ~ ~ ~",
+        "~ ~ ~ ~ ~",
+        "~ X ~ ~ ~",
+        "~ ~ ~ O ~",
+        "~ ~ ~ ~ ~"
+      ]
+    },
+    "source_team": "Team0x10",
+    "test_id": "T0017"
+  },
+  {
+    "name": "Player joins same game twice",
+    "why": "Ensures the server prevents a player from joining the same game multiple times.",
+    "method": "POST",
+    "endpoint": "/api/games/:id/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": true
+    },
+    "source_team": "Team0x10",
+    "test_id": "T0018"
+  },
+  {
+    "name": "Place ship at valid game's borders",
+    "why": "Ensures ships can be placed along the edge of the board.",
+    "method": "POST",
+    "endpoint": "/api/games/:id/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 0,
+          "col": 4
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": true
+    },
+    "source_team": "Team0x10",
+    "test_id": "T0019"
+  },
+  {
+    "name": "Check new, valid game is initialized properly",
+    "why": "Confirms the game is properly listed.",
+    "method": "GET",
+    "endpoint": "/api/games/:id",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_id": 1,
+      "grid_size": 5,
+      "status": "waiting",
+      "current_turn_index": 0,
+      "active_players": 1
+    },
+    "source_team": "Team0x10",
+    "test_id": "T0020"
+  },
+  {
+    "name": "Create player with valid username",
+    "why": "Verifies that a new player can be successfully created with a valid alphanumeric username and returns a player_id.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "mirpatel"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": 1
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0021"
+  },
+  {
+    "name": "Reject duplicate username on player creation",
+    "why": "Ensures the server enforces unique usernames and returns a conflict error when the same username is registered twice.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "mirpatel"
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "conflict"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0022"
+  },
+  {
+    "name": "Reject player creation with missing username",
+    "why": "Verifies the server validates required fields and returns 400 when username is omitted from the request body.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {},
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0023"
+  },
+  {
+    "name": "Reject invalid username with special characters",
+    "why": "Confirms the server enforces the alphanumeric-only constraint on usernames and rejects strings with special characters.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "dan!!!"
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0024"
+  },
+  {
+    "name": "Get stats for newly created player",
+    "why": "Verifies that a newly created player starts with all statistics at zero including games_played, wins, losses, total_shots, and total_hits.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "total_shots": 0,
+      "total_hits": 0
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0025"
+  },
+  {
+    "name": "Get stats for nonexistent player returns 404",
+    "why": "Ensures the server returns a not_found error when statistics are requested for a player_id that does not exist.",
+    "method": "GET",
+    "endpoint": "/api/players/999/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "not_found"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0026"
+  },
+  {
+    "name": "Create game with valid parameters",
+    "why": "Verifies that a new game is successfully created with a valid creator_id, grid_size, and max_players, and begins in waiting_setup state.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0027"
+  },
+  {
+    "name": "Create game with minimum valid grid size",
+    "why": "Confirms the server accepts grid_size=5 as the minimum allowed value per the API specification.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 5,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0028"
+  },
+  {
+    "name": "Reject game creation with grid size too large",
+    "why": "Ensures the server enforces the maximum grid_size of 15 and returns 400 when a larger value is submitted.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 20,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0029"
+  },
+  {
+    "name": "Reject game creation with grid size too small",
+    "why": "Ensures the server enforces the minimum grid_size of 5 and returns 400 when a smaller value like 3 is submitted.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 3,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0030"
+  },
+  {
+    "name": "Get game state returns correct fields",
+    "why": "Verifies the GET /games/{id} endpoint returns all required fields including game_id, grid_size, status, players, current_turn_player_id, and total_moves.",
+    "method": "GET",
+    "endpoint": "/api/games/1",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_id": 1,
+      "status": "waiting_setup"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0031"
+  },
+  {
+    "name": "Get nonexistent game returns 404",
+    "why": "Verifies that requesting a game with an invalid or nonexistent ID returns a not_found error with status 404.",
+    "method": "GET",
+    "endpoint": "/api/games/999",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "not_found"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0032"
+  },
+  {
+    "name": "Player 2 joins an existing waiting_setup game",
+    "why": "Verifies that a second player with a valid player_id can successfully join a game that is still in waiting_setup state, and that the server responds with a joined confirmation.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 2
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "joined"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0033"
+  },
+  {
+    "name": "Join nonexistent game returns 404",
+    "why": "Ensures the server returns a not_found error when a player attempts to join a game ID that does not exist.",
+    "method": "POST",
+    "endpoint": "/api/games/999/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "not_found"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0034"
+  },
+  {
+    "name": "Reject duplicate join in same game",
+    "why": "Verifies the server prevents a player from joining the same game twice and returns a conflict or bad_request error.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "conflict"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0035"
+  },
+  {
+    "name": "Place ships with valid coordinates",
+    "why": "Confirms that a player in a game can successfully place exactly 3 ships at valid in-bounds coordinates during the waiting_setup phase.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 2,
+          "col": 2
+        }
+      ]
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "placed"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0036"
+  },
+  {
+    "name": "Reject ship placement with out-of-bounds coordinates",
+    "why": "Ensures the server validates ship coordinates against the grid boundaries and rejects placements that exceed the grid size.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 99,
+          "col": 0
+        },
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 2,
+          "col": 2
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0037"
+  },
+  {
+    "name": "Reject ship placement with overlapping coordinates",
+    "why": "Verifies the server detects and rejects duplicate ship coordinates within the same placement request.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0038"
+  },
+  {
+    "name": "Reject second ship placement by same player",
+    "why": "Ensures a player cannot place ships twice in the same game, enforcing the one-time placement rule.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 3,
+          "col": 3
+        },
+        {
+          "row": 4,
+          "col": 4
+        },
+        {
+          "row": 5,
+          "col": 5
+        }
+      ]
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "conflict"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0039"
+  },
+  {
+    "name": "Fire at valid cell \u2014 hit",
+    "why": "Verifies that firing at a coordinate where an opponent ship exists returns a hit result with correct game state fields.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "result": "hit"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0040"
+  },
+  {
+    "name": "Fire at valid cell \u2014 miss",
+    "why": "Verifies that firing at an empty coordinate correctly returns a miss result and advances the turn to the next player.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 3,
+      "col": 3
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "result": "miss"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0041"
+  },
+  {
+    "name": "Fire out of turn returns 403",
+    "why": "Ensures strict turn enforcement \u2014 the server must return 403 Forbidden when a player fires when it is not their turn.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 2,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "forbidden"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0042"
+  },
+  {
+    "name": "Duplicate fire at same cell returns 409",
+    "why": "Verifies the server prevents a player from firing at the same coordinate twice, returning 409 Conflict.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 3,
+      "col": 4
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "conflict"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0043"
+  },
+  {
+    "name": "Fire at out-of-bounds coordinates returns 400",
+    "why": "Ensures the server validates firing coordinates against the grid and rejects out-of-bounds shots with a 400 error.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 99,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0044"
+  },
+  {
+    "name": "Fire after game is finished returns 400",
+    "why": "Confirms the server rejects fire requests after a game has reached the finished state, returning 400 Bad Request.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "bad_request"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0045"
+  },
+  {
+    "name": "Get move history for game",
+    "why": "Verifies the move history endpoint returns a chronological list of all moves with required fields including player_id, row, col, result, and timestamp.",
+    "method": "GET",
+    "endpoint": "/api/games/1/moves",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "Team0x02",
+    "test_id": "T0046"
+  },
+  {
+    "name": "Fire response includes next_player_id and game_status",
+    "why": "Confirms the fire endpoint response always includes next_player_id and game_status fields as required by the API contract.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 2,
+      "col": 2
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_status": "playing"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0047"
+  },
+  {
+    "name": "Accuracy calculated correctly in player stats",
+    "why": "Verifies that player accuracy is a decimal between 0 and 1 representing the ratio of total_hits to total_shots after gameplay.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "accuracy": 0.5
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0048"
+  },
+  {
+    "name": "Test mode restart resets game to waiting_setup",
+    "why": "Verifies the test-mode restart endpoint resets a game's state and clears ships and moves while preserving player statistics.",
+    "method": "POST",
+    "endpoint": "/api/test/games/1/restart",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "reset"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0049"
+  },
+  {
+    "name": "Test mode restart blocked without password",
+    "why": "Ensures the test-mode endpoint is protected and returns 403 Forbidden when the X-Test-Password header is missing or incorrect.",
+    "method": "POST",
+    "endpoint": "/api/test/games/1/restart",
+    "headers": {},
+    "body": null,
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "forbidden"
+    },
+    "source_team": "Team0x02",
+    "test_id": "T0050"
+  },
+  {
+    "name": "Create New Player (Standard Registration)",
+    "why": "Verifies that a player can successfully be created, which is the first basic step using the app [cite: 1]",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "playerName": "TestGuy"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "displayName": "TestGuy"
+    },
+    "source_team": "Team0x0C",
+    "test_id": "T0051"
+  },
+  {
+    "name": "Error Case (Authentication)",
+    "why": "Ensures that the test mode cannot be utilized without having the appropriate security token [cite: 1]",
+    "method": "POST",
+    "endpoint": "/api/test/games/1/ships",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "playerld": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 0,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 2
+        }
+      ]
+    },
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "Forbidden: invalid or missing security header"
+    },
+    "source_team": "Team0x0C",
+    "test_id": "T0052"
+  },
+  {
+    "name": "Create game with invalid grid size (too large)",
+    "why": "Validates that the server enforces the constraints on board size [cite: 1]",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "gridSize": 16,
+      "maxPlayers": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "gridSize must be between 5 and 15"
+    },
+    "source_team": "Team0x0C",
+    "test_id": "T0053"
+  },
+  {
+    "name": "Fire shot out of turn",
+    "why": "Confirms that the game logic enforces the turn order [cite: 1]",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "playerld": 1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Not your turn"
+    },
+    "source_team": "Team0x0C",
+    "test_id": "T0054"
+  },
+  {
+    "name": "Join game with non-existent player ID",
+    "why": "Check that the game logic checks the foreign key before inserting a player into the game [cite: 2]",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "playerld": 999999
+    },
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "Player not found"
+    },
+    "source_team": "Team0x0C",
+    "test_id": "T0055"
+  },
+  {
+    "name": "Test 1 Create Game with Minimum Boundary Grid Size",
+    "why": "This verifies the server correctly handles the lower bound of the chooseable grid size (5 x 5) from the requirements",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "creator_id": 1,
+      "grid_size": 5,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "grid_size": 5,
+      "status": "waiting"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0056"
+  },
+  {
+    "name": "Reject Full Game Joining",
+    "why": "This checks that the server is enforcing the max_players limit and prevents a third player from joining a two-player game",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "player_id": 3
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "game full"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0057"
+  },
+  {
+    "name": "Prevent Out of turn Move",
+    "why": "This test verfies that the server tracks current_turn_index and rejects moves from players who are in the game but not currently active",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "player_id": 2,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "not your turn"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0058"
+  },
+  {
+    "name": "Reveal Board Unauthorized Access",
+    "why": "This test ensures that the test mode endpoints are strictly protected by the x-test-password middleware and cannot be accessed by standard players",
+    "method": "GET",
+    "endpoint": "/api/test/games/{id}/board/{player_id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "Forbidden"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0059"
+  },
+  {
+    "name": "Statistics Integrity for New Player",
+    "why": "This test verifies persistent player statistics by ensuring that a newly created player has a clean, correctly formatted zero-state record without null values or calculation errors (like division by zero)",
+    "method": "GET",
+    "endpoint": "/api/players/{id}/stats",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "wins": 0,
+      "losses": 0,
+      "accuracy": 0.0,
+      "games_played": 0
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0060"
+  },
+  {
+    "name": "Reject game creation when required fields are missing",
+    "why": "Ensures that the server validates input and prevents incomplete game creation requests.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "missing required fields"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0061"
+  },
+  {
+    "name": "Reject fire action when player attempts to move out of turn",
+    "why": "Verifies that turn order is enforced and players cannot take actions when it is not their turn.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 2,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "not this player's turn"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0062"
+  },
+  {
+    "name": "Reject join request with non-existent player ID",
+    "why": "Ensures that only valid registered players can join a game.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 99999
+    },
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "player does not exist"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0063"
+  },
+  {
+    "name": "Reject firing at a coordinate that has already been targeted",
+    "why": "Prevents duplicate moves and ensures the game correctly tracks previously fired coordinates.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "cell already targeted"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0064"
+  },
+  {
+    "name": "Reject player join request after game has already started",
+    "why": "Ensures that once a game transitions out of setup, no additional players can join.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 3
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "game already started"
+    },
+    "source_team": "Team0x0F",
+    "test_id": "T0065"
+  },
+  {
+    "name": "Reset system successfully",
+    "why": "Ensures the server can clear all game and player data and start from a clean state before the rest of the tests run.",
+    "method": "POST",
+    "endpoint": "/api/reset",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "reset"
+    },
+    "source_team": "Shaun Whitt and Jack Stivers",
+    "test_id": "T0066"
+  },
+  {
+    "name": "Create first player successfully",
+    "why": "Confirms valid player creation and verifies that the API returns the expected player_id field on success.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "player_test_1"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": 1
+    },
+    "source_team": "Shaun Whitt and Jack Stivers",
+    "test_id": "T0067"
+  },
+  {
+    "name": "Create second player successfully",
+    "why": "Creates the second player needed for multiplayer flow and verifies repeated valid player creation works correctly.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "player_test_2"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": 2
+    },
+    "source_team": "Shaun Whitt and Jack Stivers",
+    "test_id": "T0068"
+  },
+  {
+    "name": "Join non-existent game",
+    "why": "Verifies that the server correctly handles invalid game IDs and does not allow joining games that do not exist.",
+    "method": "POST",
+    "endpoint": "/api/games/999/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "not_found"
+    },
+    "source_team": "Shaun Whitt and Jack Stivers",
+    "test_id": "T0069"
+  },
+  {
+    "name": "Create game successfully",
+    "why": "Ensures a valid game can be created and begins in the waiting_setup state before players finish setup.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "Shaun Whitt and Jack Stivers",
+    "test_id": "T0070"
+  },
+  {
+    "name": "Fire before game reaches playing state",
+    "why": "Ensures the server prevents firing while the game is still in setup and not yet in the playing state.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "forbidden"
+    },
+    "source_team": "Shaun Whitt and Jack Stivers",
+    "test_id": "T0071"
+  },
+  {
+    "name": "Create a new game successfully",
+    "why": "Verifies the API can create a fresh game and return initialized game state.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "player1": "Alice",
+      "player2": "Bob"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "Team0x06",
+    "test_id": "T0072"
+  },
+  {
+    "name": "Reject fire request with missing auth header",
+    "why": "Checks that protected fire endpoints require authentication before mutating state.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "playerId": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 401,
+    "expected_response_contains": {
+      "error": "unauthorized"
+    },
+    "source_team": "Team0x06",
+    "test_id": "T0073"
+  },
+  {
+    "name": "Reject fire at out-of-bounds coordinate",
+    "why": "Catches board boundary validation bugs for illegal row values.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 1,
+      "row": 10,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "invalid_coordinates"
+    },
+    "source_team": "Team0x06",
+    "test_id": "T0074"
+  },
+  {
+    "name": "Reject duplicate fire attempt",
+    "why": "Ensures the server tracks prior moves and blocks duplicate shots.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "conflict"
+    },
+    "source_team": "Team0x06",
+    "test_id": "T0075"
+  },
+  {
+    "name": "Reject fire after game is over",
+    "why": "Checks sequencing logic so completed games cannot continue accepting moves.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 1,
+      "row": 2,
+      "col": 3
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "game_over"
+    },
+    "source_team": "Team0x06",
+    "test_id": "T0076"
+  },
+  {
+    "name": "Valid 3-ship placement returns 200",
+    "why": "This was our Checkpoint B failure; verifies the server now correctly accepts the {row,col} object format specified in the spec instead of rejecting it as invalid.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 1,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 0
+        }
+      ]
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "message": "ok"
+    },
+    "source_team": "Team0x04",
+    "test_id": "T0077"
+  },
+  {
+    "name": "Firing out of turn returns 403",
+    "why": "Turn enforcement is a core identity requirement; a broken implementation might allow any player to fire at any time, completely undermining game integrity.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "player_id": 2,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "not your turn"
+    },
+    "source_team": "Team0x04",
+    "test_id": "T0078"
+  },
+  {
+    "name": "Firing into an already-finished game returns 410",
+    "why": "State sequencing: a server that doesn't track game completion could allow shots after the game ends, corrupting stats with extra shots that never should have happened.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "player_id": 1,
+      "row": 3,
+      "col": 3
+    },
+    "expected_status": 410,
+    "expected_response_contains": {
+      "error": "game already finished"
+    },
+    "source_team": "Team0x04",
+    "test_id": "T0079"
+  },
+  {
+    "name": "Player accuracy is correct after a mix of hits and misses",
+    "why": "An implementation might forget to update total_shots on misses, or calculate accuracy only at game end; this catches both bugs by testing mid-game stat tracking.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "total_shots": 3,
+      "total_hits": 1
+    },
+    "source_team": "Team0x04",
+    "test_id": "T0080"
+  },
+  {
+    "name": "Joining a game already at max_players returns 409",
+    "why": "Without this guard, a third player could silently join and corrupt turn order; verifies max_players enforcement is actually applied at join time, not just at game creation.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "player_id": 3
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "game is full"
+    },
+    "source_team": "Team0x04",
+    "test_id": "T0081"
+  },
+  {
+    "name": "Create player with valid input",
+    "why": "Confirms that a player can be created successfully and the server returns a valid player_id.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "testuser"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": 1
+    },
+    "source_team": "0x05",
+    "test_id": "T0082"
+  },
+  {
+    "name": "Fire at same cell twice",
+    "why": "Ensures the server prevents duplicate shots at the same coordinate, which is a common game logic issue.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Cell already targeted"
+    },
+    "source_team": "0x05",
+    "test_id": "T0083"
+  },
+  {
+    "name": "Join game that is already full",
+    "why": "Verifies that the server enforces the maximum player limit and does not allow extra players to join.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 4
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "Game is full"
+    },
+    "source_team": "0x05",
+    "test_id": "T0084"
+  },
+  {
+    "name": "Get stats for player with no activity",
+    "why": "Checks that a new player has correctly initialized stats instead of null or incorrect values.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "total_shots": 0
+    },
+    "source_team": "0x05",
+    "test_id": "T0085"
+  },
+  {
+    "name": "Fire after game is finished",
+    "why": "Ensures the server blocks any further actions once the game has ended.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "player_id": 1,
+      "row": 2,
+      "col": 2
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "Game already finished"
+    },
+    "source_team": "0x05",
+    "test_id": "T0086"
+  },
+  {
+    "name": "Create player with duplicate username",
+    "why": "Ensures the system enforces unique usernames and prevents duplicate player records.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "username": "player1"
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "Username"
+    },
+    "source_team": "TeamBattleship",
+    "test_id": "T0087"
+  },
+  {
+    "name": "Join game that is already full",
+    "why": "Validates that the server correctly prevents players from joining a full game.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 3
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "full"
+    },
+    "source_team": "TeamBattleship",
+    "test_id": "T0088"
+  },
+  {
+    "name": "Place ships with invalid number of cells",
+    "why": "Ensures ship placement validation enforces exactly 3 ship cells per player.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 1,
+      "ships": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "3"
+    },
+    "source_team": "TeamBattleship",
+    "test_id": "T0089"
+  },
+  {
+    "name": "Fire at the same cell twice",
+    "why": "Prevents duplicate moves and ensures the game enforces unique targeting per cell.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 1,
+      "row": 2,
+      "col": 2
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "already"
+    },
+    "source_team": "TeamBattleship",
+    "test_id": "T0090"
+  },
+  {
+    "name": "Get stats for player with no games played",
+    "why": "Verifies correct default stats and prevents divide-by-zero errors in accuracy calculation.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {},
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games": 0,
+      "wins": 0,
+      "losses": 0,
+      "shots": 0,
+      "hits": 0
+    },
+    "source_team": "TeamBattleship",
+    "test_id": "T0091"
+  },
+  {
+    "name": "Create player with valid username",
+    "why": "Verifies that the server creates a new player and returns a server-generated player_id.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "warrior1"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": 1
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0092"
+  },
+  {
+    "name": "Reject duplicate username",
+    "why": "Ensures the server enforces unique usernames and rejects duplicate player creation.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "warrior1"
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "duplicate username"
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0093"
+  },
+  {
+    "name": "Get stats for new player",
+    "why": "Confirms that a brand-new player starts with zeroed lifetime statistics and safe accuracy calculation.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "total_shots": 0,
+      "total_hits": 0,
+      "accuracy": 0
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0094"
+  },
+  {
+    "name": "Create game with valid parameters",
+    "why": "Verifies that a valid game can be created successfully and begins in the waiting state.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting"
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0095"
+  },
+  {
+    "name": "Reject game creation with grid too small",
+    "why": "Ensures the server validates game setup boundaries and rejects invalid grid sizes.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 4,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "invalid grid size"
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0096"
+  },
+  {
+    "name": "Join nonexistent game",
+    "why": "Verifies that the server returns a not found error when a player tries to join a game that does not exist.",
+    "method": "POST",
+    "endpoint": "/api/games/9999/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "game not found"
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0097"
+  },
+  {
+    "name": "Join a game successfully before it starts",
+    "why": "Confirms that a valid second player can join an existing game that still has room.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 2
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "joined"
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0098"
+  },
+  {
+    "name": "Reject duplicate ship placement in one request",
+    "why": "Ensures the server rejects invalid ship setup when the same coordinate is submitted more than once.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 1,
+          "col": 0
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "duplicate ship placement"
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0099"
+  },
+  {
+    "name": "Reject out of bounds fire",
+    "why": "Checks that gameplay input validation blocks shots outside the board instead of mutating state.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 8,
+      "col": 8
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "out of bounds"
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0100"
+  },
+  {
+    "name": "Reject test restart without password",
+    "why": "Verifies that test-only endpoints remain protected and cannot be accessed without the required test header.",
+    "method": "POST",
+    "endpoint": "/api/test/games/1/restart",
+    "headers": {},
+    "body": null,
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "forbidden"
+    },
+    "source_team": "Team 0x11",
+    "test_id": "T0101"
+  },
+  {
+    "name": "Reject stats requests for non-existing player",
+    "why": "Verifies the API distinguishes between a real player with zero activity and a player that does not exist.",
+    "method": "GET",
+    "endpoint": "/api/players/999999/stats",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "not_found"
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0102"
+  },
+  {
+    "name": "Fire at out-of-bounds coordinates",
+    "why": "Ensures coordinate bounds are validated before inserting into the moves table.",
+    "method": "POST",
+    "endpoint": "/api/game/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "player_id": 1,
+      "row": 99,
+      "col": -2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "invalid_coordinates"
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0103"
+  },
+  {
+    "name": "Reject fire after game is over",
+    "why": "Checks that the server enforces game lifecycle rules and prevents extra moves after a winner has been decided.",
+    "method": "POST",
+    "endpoint": "/api/game/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "game_over"
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0104"
+  },
+  {
+    "name": "Reject fire request without authentication header",
+    "why": "Ensures protected endpoints enforce authentication and do not allow unauthenticated actions.",
+    "method": "POST",
+    "endpoint": "/api/game/fire",
+    "headers": {},
+    "body": {
+      "playerId": 1,
+      "row": 2,
+      "col": 2
+    },
+    "expected_status": 401,
+    "expected_response_contains": {
+      "error": "unauthorized"
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0105"
+  },
+  {
+    "name": "Prevent duplicate fire on same cell",
+    "why": "Ensures the API tracks past moves and prevents firing at the same coordinate twice.",
+    "method": "POST",
+    "endpoint": "/api/game/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 3,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "duplicate_move"
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0106"
+  },
+  {
+    "name": "Stats reflect zero activity for a player who never fired",
+    "why": "Catches implementations that return 404 or crash on players with no game history instead of returning zeroed stats.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "total_shots": 0,
+      "total_hits": 0,
+      "accuracy": 0.0
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0107"
+  },
+  {
+    "name": "Fire at out-of-bounds coordinates on active game",
+    "why": "Ensures coordinate bounds are validated before inserting into the moves table, preventing corrupt game state.",
+    "method": "POST",
+    "endpoint": "/api/game/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "player_id": 1,
+      "row": 99,
+      "col": -1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "..."
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0108"
+  },
+  {
+    "name": "Fourth player cannot join a 3-player game",
+    "why": "Verifies max_players capacity enforcement so a full lobby correctly rejects late arrivals.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "player_id": 4
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "..."
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0109"
+  },
+  {
+    "name": "Reject fire request with a missing authentication header",
+    "why": "Confirms protected endpoints are consistently enforcing authentication and do not allow unauthenticated game actions to slip through.",
+    "method": "POST",
+    "endpoint": "/api/game/fire",
+    "headers": {},
+    "body": {
+      "playerId": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 401,
+    "expected_response_contains": {
+      "error": "..."
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0110"
+  },
+  {
+    "name": "Fire twice at the same cell in the same game",
+    "why": "Catches implementations that fail to track prior moves correctly and allow duplicate shots that would corrupt game stats.",
+    "method": "POST",
+    "endpoint": "/api/game/fire",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {
+      "playerId": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "..."
+    },
+    "source_team": "Willing To Relocate/Team0x08",
+    "test_id": "T0111"
+  },
+  {
+    "name": "Create new player successfully",
+    "why": "Verifies that the server handles new player creation correctly and returns the mandatory 201 status code.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "Gabbie_Test_QA"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "username": "Gabbie_Test_QA"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0112"
+  },
+  {
+    "name": "Reject join attempt on full game",
+    "why": "Ensures the server strictly enforces max_players capacity and rejects extra joins with a 409 Conflict.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 99
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "Game is full"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0113"
+  },
+  {
+    "name": "Prevent firing at out-of-bounds coordinates",
+    "why": "Verifies coordinate validation by attempting to fire at a negative row index which should be rejected.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": -1,
+      "col": 5
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Invalid coordinates"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0114"
+  },
+  {
+    "name": "Calculate accuracy for new player with zero shots",
+    "why": "Checks for division-by-zero errors in PHP logic when a player exists but has no battle history.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "total_shots": 0,
+      "accuracy": 0.0
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0115"
+  },
+  {
+    "name": "Reject fire attempt after game is finished",
+    "why": "Confirms the game state machine locks the board and prevents further moves once a winner is declared.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "Game over"
+    },
+    "source_team": "Team0x0A",
+    "test_id": "T0116"
+  },
+  {
+    "name": "Player stats accuracy calculated correctly after completed game",
+    "why": "Catches servers that return accuracy as a string instead of a float, compute it incorrectly, or fail to update stats after a game completes.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 1,
+      "wins": 1,
+      "losses": 0
+    },
+    "source_team": "Team0x07",
+    "test_id": "T0117"
+  },
+  {
+    "name": "Fire into a finished game returns 400",
+    "why": "Catches servers that do not enforce game state and allow moves after the game is already finished.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Game is not active"
+    },
+    "source_team": "Team0x07",
+    "test_id": "T0118"
+  },
+  {
+    "name": "Join a full game returns 400",
+    "why": "Catches servers that allow more players than max_players without enforcing the capacity limit.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 3
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Game is full"
+    },
+    "source_team": "Team0x07",
+    "test_id": "T0119"
+  },
+  {
+    "name": "Creating a player with the same username twice returns the same player_id",
+    "why": "Catches servers that create duplicate players instead of reusing persistent identity, breaking the cross-game stats requirement.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "dan"
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "player_id": 1
+    },
+    "source_team": "Team0x07",
+    "test_id": "T0120"
+  },
+  {
+    "name": "Player stats survive a test restart",
+    "why": "Catches servers that wipe player lifetime statistics when resetting a game instead of only clearing ships and moves.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "wins": 1,
+      "total_shots": 3,
+      "total_hits": 3
+    },
+    "source_team": "Team0x07",
+    "test_id": "T0121"
+  },
+  {
+    "name": "GET stats for a new player - all zeros",
+    "why": "Verifies the stats endpoint returns a correct zero-state for a brand-new player before any game activity. Catches implementations that return null, omit fields, or fail to initialize stats on player creation.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "total_shots": 0,
+      "total_hits": 0,
+      "accuracy": 0.0
+    },
+    "source_team": "Team0x0D",
+    "test_id": "T0122"
+  },
+  {
+    "name": "Place ships with out-of-bounds coordinates",
+    "why": "Catches implementations that skip coordinate bounds validation and blindly insert ship positions into the database without checking against the grid_size constraint.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 99,
+          "col": 99
+        },
+        {
+          "row": 1,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 0
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Invalid ship coordinates"
+    },
+    "source_team": "Team0x0D",
+    "test_id": "T0123"
+  },
+  {
+    "name": "Fire into a finished game",
+    "why": "Catches implementations that do not check game status before processing a fire move, allowing moves to be recorded after a winner has already been declared.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Game is not active - all players must place ships first"
+    },
+    "source_team": "Team0x0D",
+    "test_id": "T0124"
+  },
+  {
+    "name": "Join a game that does not exist",
+    "why": "Catches implementations that silently fail or return 200 or 500 when a non-existent game ID is provided, instead of returning a proper 404 Not Found response.",
+    "method": "POST",
+    "endpoint": "/api/games/99999/join",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "Game not found"
+    },
+    "source_team": "Team0x0D",
+    "test_id": "T0125"
+  },
+  {
+    "name": "Player statistics persist after game restart",
+    "why": "Catches implementations that wipe all game-related data including player stats during restart, instead of only clearing ships and moves while preserving lifetime statistics.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "wins": 1,
+      "losses": 0
+    },
+    "source_team": "Team0x0D",
+    "test_id": "T0126"
+  },
+  {
+    "name": "Create player with valid username",
+    "why": "Verifies that a new player can be registered and that the server responds with a unique player_id.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "admiral_taylor"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": 1
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0127"
+  },
+  {
+    "name": "Create player with duplicate username",
+    "why": "Ensures the server rejects a registration attempt when the chosen username is already taken, preventing duplicate accounts.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "admiral_taylor"
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "Username already taken"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0128"
+  },
+  {
+    "name": "Create player with missing username field",
+    "why": "Confirms that the server enforces required field validation and returns a 400 when the username body field is absent.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {},
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Missing required field: username"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0129"
+  },
+  {
+    "name": "Create game with valid parameters",
+    "why": "Verifies that a new game is successfully created and begins in the waiting state so players can join before ships are placed.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0130"
+  },
+  {
+    "name": "Create game with grid_size below minimum",
+    "why": "Ensures the server rejects game creation when grid_size is less than 5, enforcing the allowed grid dimensions.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 3,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "grid_size must be between 5 and 15"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0131"
+  },
+  {
+    "name": "Get game state for existing game",
+    "why": "Verifies that the server returns accurate game metadata including status and active player count for a valid game ID.",
+    "method": "GET",
+    "endpoint": "/api/games/1",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "waiting"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0132"
+  },
+  {
+    "name": "Get game state for non-existent game",
+    "why": "Confirms the server returns a 404 when requesting a game that does not exist, rather than a server error or empty response.",
+    "method": "GET",
+    "endpoint": "/api/games/999999",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "Game not found"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0133"
+  },
+  {
+    "name": "Join game with valid player",
+    "why": "Confirms that a registered player who is not already in the game can successfully join while it is in the waiting state.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 2
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_id": 1,
+      "player_id": 2
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0134"
+  },
+  {
+    "name": "Join game with a player already in the game",
+    "why": "Ensures the server prevents a player from joining a game they are already part of, avoiding duplicate player entries.",
+    "method": "POST",
+    "endpoint": "/api/games/1/join",
+    "headers": {},
+    "body": {
+      "player_id": 2
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "Player already in this game"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0135"
+  },
+  {
+    "name": "Place ships with exactly 3 valid positions",
+    "why": "Verifies that a player can place the required 3 ships within the grid bounds and that the response confirms placement.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 4
+        },
+        {
+          "row": 5,
+          "col": 7
+        }
+      ]
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "placed"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0136"
+  },
+  {
+    "name": "Place ships with duplicate positions",
+    "why": "Ensures the server rejects ship placement when two or more ships share the same grid coordinate.",
+    "method": "POST",
+    "endpoint": "/api/games/1/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 5,
+          "col": 7
+        }
+      ]
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "Ships already placed for this player"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0137"
+  },
+  {
+    "name": "Fire at a valid coordinate during active game",
+    "why": "Confirms that the current turn player can fire at a valid grid position and receive a hit/miss result along with the updated game status.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 3,
+      "col": 3
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_status": "active"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0138"
+  },
+  {
+    "name": "Fire at an already targeted coordinate",
+    "why": "Ensures the server prevents a player from firing at a position they have already targeted in the same game, enforcing the no-repeat rule.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 3,
+      "col": 3
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "You already fired at this position"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0139"
+  },
+  {
+    "name": "Get move history for a game",
+    "why": "Verifies that the server returns an ordered list of all moves made in a game, enabling replay and audit of the match.",
+    "method": "GET",
+    "endpoint": "/api/games/1/moves",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_id": 1
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0140"
+  },
+  {
+    "name": "Get player stats for existing player",
+    "why": "Confirms that the server returns accurate lifetime statistics for a player including wins, losses, shots, hits, and accuracy.",
+    "method": "GET",
+    "endpoint": "/api/players/1/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0141"
+  },
+  {
+    "name": "Get player stats for non-existent player",
+    "why": "Ensures the server returns a 404 when requesting stats for a player ID that does not exist in the database.",
+    "method": "GET",
+    "endpoint": "/api/players/999999/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "Player not found"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0142"
+  },
+  {
+    "name": "Get board via test-mode endpoint with valid password",
+    "why": "Verifies that the authenticated test-mode board inspection endpoint returns a 2D grid when the correct X-Test-Password header is provided.",
+    "method": "GET",
+    "endpoint": "/api/test/games/1/board/1",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_id": 1
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0143"
+  },
+  {
+    "name": "Access test-mode endpoint without password header",
+    "why": "Confirms that test-mode endpoints are protected and return 403 when the X-Test-Password header is missing or incorrect.",
+    "method": "GET",
+    "endpoint": "/api/test/games/1/board/1",
+    "headers": {},
+    "body": null,
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "Invalid or missing X-Test-Password header"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0144"
+  },
+  {
+    "name": "Reset game via test-mode endpoint",
+    "why": "Ensures the test-mode restart endpoint clears all moves and ships for a game, resetting it to the waiting state for deterministic retesting.",
+    "method": "POST",
+    "endpoint": "/api/test/games/1/restart",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {},
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "reset"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0145"
+  },
+  {
+    "name": "Fire out of bounds",
+    "why": "Ensures the server rejects a fire action targeting a row or column outside the grid dimensions defined when the game was created.",
+    "method": "POST",
+    "endpoint": "/api/games/1/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 100,
+      "col": 100
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "Game is not active"
+    },
+    "source_team": "The Software Shipmen",
+    "test_id": "T0146"
+  },
+  {
+    "name": "Reset server state",
+    "why": "Verifies the server can return to a clean baseline before other tests run.",
+    "method": "POST",
+    "endpoint": "/api/reset",
+    "headers": {},
+    "body": {},
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "reset"
+    },
+    "source_team": "Team0x0B",
+    "test_id": "T0147"
+  },
+  {
+    "name": "Create player with valid username",
+    "why": "Confirms that player creation succeeds and the API returns a new player ID.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "qa_player_1"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": 1
+    },
+    "source_team": "Team0x0B",
+    "test_id": "T0148"
+  },
+  {
+    "name": "Create player with missing username",
+    "why": "Ensures the server rejects invalid player creation requests that omit the required username field.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {},
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "username required"
+    },
+    "source_team": "Team0x0B",
+    "test_id": "T0149"
+  },
+  {
+    "name": "Get stats for nonexistent player",
+    "why": "Verifies the API handles invalid player IDs gracefully instead of returning bad data.",
+    "method": "GET",
+    "endpoint": "/api/players/9999/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {
+      "error": "player not found"
+    },
+    "source_team": "Team0x0B",
+    "test_id": "T0150"
+  },
+  {
+    "name": "Create game with grid size below minimum",
+    "why": "Checks boundary validation and ensures invalid board sizes are rejected.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 4,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {
+      "error": "grid_size must be between 5 and 15"
+    },
+    "source_team": "Team0x0B",
+    "test_id": "T0151"
+  }
+]
