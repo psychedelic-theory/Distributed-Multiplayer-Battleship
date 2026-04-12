@@ -8,6 +8,8 @@ Rules enforced here:
   - All game state transitions go through game_logic helpers
 """
 
+import os
+
 from flask import Blueprint, request, jsonify
 import re
 from psycopg.errors import UniqueViolation
@@ -23,6 +25,17 @@ from .game_logic import (
 )
 
 api = Blueprint("api", __name__, url_prefix="/api")
+
+# ---------------------------------------------------------------------------
+# Testing headers debug - temporary
+# ---------------------------------------------------------------------------
+@api.route("/debug-headers", methods=["GET", "POST"])
+def debug_headers():
+    return jsonify({
+        "headers": dict(request.headers),
+        "TEST_MODE_env": os.environ.get("TEST_MODE", "NOT_SET"),
+    }), 200
+
 
 # ---------------------------------------------------------------------------
 # GET /api/health

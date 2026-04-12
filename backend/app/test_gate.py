@@ -29,14 +29,15 @@ def require_test_mode():
     if not _is_test_mode_enabled():
         return jsonify({"error": "Test mode is disabled"}), 403
 
-    provided = ""
+    provided = None
     for h in TEST_HEADERS:
-        v = request.headers.get(h, "")
+        v = request.headers.get(h, "").strip()
         if v:
             provided = v
             break
 
-    if provided != TEST_PASSWORD:
-        return jsonify({"error": "Invalid or missing test password header"}), 403
+    if provided is None or provided != TEST_PASSWORD:
+        return jsonify({"error": "forbidden"}), 403
 
     return None  # all checks passed
+
