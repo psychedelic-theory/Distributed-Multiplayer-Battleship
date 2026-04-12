@@ -31,9 +31,11 @@ api = Blueprint("api", __name__, url_prefix="/api")
 # ---------------------------------------------------------------------------
 @api.route("/debug-headers", methods=["GET", "POST"])
 def debug_headers():
-    return jsonify({
-        "headers": dict(request.headers),
+     return jsonify({
+        "received_headers": dict(request.headers),
         "TEST_MODE_env": os.environ.get("TEST_MODE", "NOT_SET"),
+        "X-Test-Password": request.headers.get("X-Test-Password", "MISSING"),
+        "X-Test-Mode": request.headers.get("X-Test-Mode", "MISSING"),
     }), 200
 
 

@@ -27,12 +27,12 @@ def require_test_mode():
     Returns None if allowed, or a (response, 403) tuple to return immediately.
     """
     if not _is_test_mode_enabled():
-        return jsonify({"error": "Test mode is disabled"}), 403
+        return jsonify({"error": "forbidden"}), 403
 
     provided = None
     for h in TEST_HEADERS:
         v = request.headers.get(h, "").strip()
-        if v:
+        if v:  # non-empty after strip
             provided = v
             break
 
