@@ -230,8 +230,10 @@ def create_game():
 
     return jsonify({
                     "game_id": game_id,
-                    "status": "waiting",
-                    "waiting_setup": True,
+                    "status": "waiting_setup",
+                    "waiting": True,
+                    "grid_size": grid_size,
+                    "max_players": max_players,
                    }), 201
 
 
