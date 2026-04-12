@@ -45,7 +45,7 @@ def debug_headers():
 
 @api.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "ok", "version": "gate-fix-v2"}), 200
 
 
 # ---------------------------------------------------------------------------

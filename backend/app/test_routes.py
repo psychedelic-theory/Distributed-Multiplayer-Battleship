@@ -302,7 +302,7 @@ def get_board(game_id, player_id=None):
 def set_turn(game_id):
     """Deterministically force whose turn it is for concurrency/race tests."""
     gate = require_test_mode()
-    if gate:
+    if gate is not None:
         return gate
 
     body = request.get_json(silent=True)
