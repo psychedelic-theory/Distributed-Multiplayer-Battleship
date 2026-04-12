@@ -228,7 +228,11 @@ def create_game():
             )
         conn.commit()
 
-    return jsonify({"game_id": game_id}), 201
+    return jsonify({
+                    "game_id": game_id,
+                    "status": "waiting",
+                    "waiting_setup": True,
+                   }), 201
 
 
 # ---------------------------------------------------------------------------
@@ -241,7 +245,7 @@ def join_game(game_id):
     if not body:
         return err("Request body must be valid JSON", 400)
 
-    player_id = body.get("player_id")
+    player_id = body.get("player_id") or body.get("playerId")
     if player_id is None:
         return err("player_id is required", 400)
     if not isinstance(player_id, int):
@@ -348,7 +352,7 @@ def place_ships(game_id):
     if not body:
         return err("Request body must be valid JSON", 400)
 
-    player_id = body.get("player_id")
+    player_id = body.get("player_id") or body.get("playerId")
     ships     = body.get("ships")
 
     if player_id is None:
@@ -433,7 +437,7 @@ def fire(game_id):
     if not body:
         return err("Request body must be valid JSON", 400)
 
-    player_id = body.get("player_id")
+    player_id = body.get("player_id") or body.get("playerId")
     row       = body.get("row")
     col       = body.get("col")
 
