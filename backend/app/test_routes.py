@@ -35,7 +35,7 @@ def err(msg, code):
 @test_api.route("/games/<int:game_id>/reset", methods=["POST"])
 def restart_game(game_id):
     gate = require_test_mode()
-    if gate:
+    if gate is not None:
         return gate
 
     with get_conn() as conn:
@@ -117,7 +117,7 @@ def place_ships_test_mode(game_id):
     so autograder can set ships after a restart.
     """
     gate = require_test_mode()
-    if gate:
+    if gate is not None:
         return gate
 
     body = request.get_json(silent=True)
