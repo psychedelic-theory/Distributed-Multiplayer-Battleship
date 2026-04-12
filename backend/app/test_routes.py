@@ -197,7 +197,7 @@ def get_board(game_id, player_id=None):
       "X"  = ship cell that has been hit
     """
     gate = require_test_mode()
-    if gate:
+    if gate is not None:
         return gate
 
     if player_id is None:
