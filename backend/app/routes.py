@@ -76,7 +76,9 @@ def create_player():
     if "player_id" in body:
         return err("bad_request", 400)
 
-    username = body.get("username")
+    username =  (body.get("username")
+                or body.get("name")
+                or body.get("playerName"))
     if username is None:
         username = body.get("name")
 
@@ -116,6 +118,7 @@ def create_player():
         "playerId": player_id,
         "username": username,
         "name": username,
+        "displayName": username,
     }), 201
 
 
