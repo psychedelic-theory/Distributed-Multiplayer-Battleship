@@ -349,3 +349,13 @@ npx serve .
 3. Place three ships.
 4. Play alternating turns until one player remains.
 5. Review final result and updated stats.
+
+
+## Human and AI Roles 
+Johan Zapata - Designed backend endpoint testing strategy in Postman, designed frontend visual elements and overall UI styling, and helped align product behavior with user facing consistency. 
+
+Nathan Kitchens - Designed database schema and integration, contributed to backend implementation and core game logic, and supported overall system functionality and debugging.
+
+ChatGPT (Codex) - Assisted with implementation support, refactor suggestions, and structured documentation updates. Helped enforce consistent API and architecture descriptions. 
+
+Claude - Supported iterative reasoning, review feedback synthesis, and alternative implentation perspectives. Assisted in contribution clarity for project artifacts.
