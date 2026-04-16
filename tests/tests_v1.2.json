@@ -1,0 +1,106 @@
+{
+  "team_name": "Willing To Relocate/Team0x08",
+  "api_version": "2.3",
+  "tests": [
+    {
+      "name": "Reject stats request for non-existing player",
+      "why": "Verifies the API distinguishes between a real player with zero activity and a player that does not exist. A 404 is required — returning zeroed stats for a ghost player would be incorrect.",
+      "method": "GET",
+      "endpoint": "/api/players/999999/stats",
+      "headers": {},
+      "body": null,
+      "expected_status": 404,
+      "expected_response_contains": {}
+    },
+    {
+      "name": "Stats reflect zero activity for a new player",
+      "why": "Catches implementations that return 404 or crash on players with no game history. A freshly created player should have valid zeroed stats, not a missing resource error.",
+      "method": "GET",
+      "endpoint": "/api/players/1/stats",
+      "headers": {},
+      "body": null,
+      "expected_status": 200,
+      "expected_response_contains": {
+        "games_played": 0,
+        "wins": 0,
+        "losses": 0,
+        "total_shots": 0,
+        "total_hits": 0,
+        "accuracy": 0.0
+      },
+      "requires": "game_created"
+    },
+    {
+      "name": "Fire at out-of-bounds coordinates is rejected",
+      "why": "Ensures coordinate bounds are validated before inserting into the moves table, preventing corrupt game state. Negative or oversized coordinates must be rejected with 400.",
+      "method": "POST",
+      "endpoint": "/api/games/{id}/fire",
+      "headers": {},
+      "body": {
+        "player_id": 1,
+        "row": 99,
+        "col": -1
+      },
+      "expected_status": 400,
+      "expected_response_contains": {},
+      "requires": "game_playing"
+    },
+    {
+      "name": "Fire out of turn is rejected with 403",
+      "why": "When player 2 tries to fire before player 1 has moved, the server must return 403 forbidden. Turn order must be enforced server-side.",
+      "method": "POST",
+      "endpoint": "/api/games/{id}/fire",
+      "headers": {},
+      "body": {
+        "player_id": 2,
+        "row": 3,
+        "col": 3
+      },
+      "expected_status": 403,
+      "expected_response_contains": {},
+      "requires": "game_playing"
+    },
+    {
+      "name": "Valid fire shot on player 1 turn returns 200 with result field",
+      "why": "Player 1 firing on a valid cell during their turn must return 200 with a result of hit or miss and a next_player_id indicating whose turn is next.",
+      "method": "POST",
+      "endpoint": "/api/games/{id}/fire",
+      "headers": {},
+      "body": {
+        "player_id": 1,
+        "row": 5,
+        "col": 5
+      },
+      "expected_status": 200,
+      "expected_response_contains": {
+        "next_player_id": "__any_integer__"
+      },
+      "requires": "game_playing"
+    },
+    {
+      "name": "Move history is empty at game start",
+      "why": "GET /api/games/{id}/moves at the start of a game should return 200 and an empty moves array. A missing or null array would be invalid.",
+      "method": "GET",
+      "endpoint": "/api/games/{id}/moves",
+      "headers": {},
+      "body": null,
+      "expected_status": 200,
+      "expected_response_contains": {},
+      "requires": "game_playing"
+    },
+    {
+      "name": "Create game with out-of-range grid_size returns 400",
+      "why": "POST /api/games with a grid_size of 0 or a negative value must be rejected with 400. Accepting an invalid grid size would allow corrupt game state to be created before any player joins.",
+      "method": "POST",
+      "endpoint": "/api/games",
+      "headers": {},
+      "body": {
+        "creator_id": 1,
+        "grid_size": 0,
+        "max_players": 2
+      },
+      "expected_status": 400,
+      "expected_response_contains": {}
+    }
+  ]
+}
