@@ -290,6 +290,11 @@ Returns board-visibility payload for validation, including:
 - Designed **frontend visual elements** and **overall UI styling direction**.
 - Helped align product behavior with user-facing clarity and consistency.
 
+### Human Role (Nathan Kitchens)
+- Designed and integrated PostgreSQL database schema.
+- Designed backend endpoint testing strategy in APIDog.
+- Helped implement core game logic such as turn handling, player elimiation and win conditions.
+
 ### AI Collaboration Roles
 AI tools were used as engineering assistants to improve speed, quality, and documentation discipline:
 - **ChatGPT (Codex):**
