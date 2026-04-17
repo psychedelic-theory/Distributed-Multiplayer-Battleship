@@ -209,7 +209,7 @@ def create_game():
     if not isinstance(grid_size, int) or not (5 <= grid_size <= 15):
         return err("grid_size must be an integer between 5 and 15", 400)
 
-    if not isinstance(max_players, int) or max_players < 1:
+    if not isinstance(max_players, int) or max_players < 2:
         return err("max_players must be an integer >= 1", 400)
 
     with get_conn() as conn:
