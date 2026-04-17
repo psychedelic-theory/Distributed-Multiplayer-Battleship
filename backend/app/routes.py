@@ -340,7 +340,12 @@ def get_game(game_id):
                     cur, game_id, game["current_turn_index"]
                 )
 
-    api_status = "waiting_setup" if game["status"] == "waiting" else game["status"]
+    if game["status"] == "waiting":
+        api_status = "waiting_setup"
+    elif game["status"] == "active":
+        api_status = "playing"
+    else:
+        api_status = game["status"]
 
     return jsonify({
         "game_id": game["game_id"],
