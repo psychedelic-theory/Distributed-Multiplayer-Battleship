@@ -380,7 +380,7 @@ def place_ships(game_id):
         return err("Request body must be valid JSON", 400)
 
     player_id = body.get("player_id") or body.get("playerId")
-    ships     = body.get("ships")
+    ships = body.get("ships")
 
     if player_id is None:
         return err("player_id is required", 400)
@@ -394,14 +394,12 @@ def place_ships(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT status, grid_size FROM games WHERE game_id=%s FOR UPDATE", (game_id,)
+                "SELECT status, grid_size FROM games WHERE game_id=%s FOR UPDATE",
+                (game_id,),
             )
             game = cur.fetchone()
             if not game:
                 return err("Game not found", 404)
-
-            if game["status"] != "waiting":
-                return err("Ship placement is only allowed during waiting state", 400)
 
             # Player must be in the game
             cur.execute(
@@ -410,27 +408,35 @@ def place_ships(game_id):
             )
             gp = cur.fetchone()
             if not gp:
-                return err("Player is not in this game", 403)
+                return err("Player is not in this game", 400)
 
-            # Cannot place twice
+            # Cannot place twice (must come BEFORE status check)
             if gp["ships_placed"]:
                 return err("Ships already placed for this player", 409)
 
-            # Validate each ship coord
+            # New placements only allowed during waiting state
+            if game["status"] != "waiting":
+                return err("Ship placement is only allowed during waiting state", 400)
+
+            # Validate ship coordinates
             gs = game["grid_size"]
             coords = []
             for s in ships:
                 if not isinstance(s, dict):
                     return err("Each ship must be an object with integer row and col", 400)
+
                 r = s.get("row")
                 c = s.get("col")
+
                 if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
                     return err("Each ship must have integer row and col", 400)
+
                 if not (0 <= r < gs and 0 <= c < gs):
                     return err(f"Ship coordinate ({r},{c}) is out of bounds for grid size {gs}", 400)
+
                 coords.append((r, c))
 
-            # No duplicate coords (overlap)
+            # No overlapping ships
             if len(set(coords)) != len(coords):
                 return err("Ships cannot overlap", 400)
 
@@ -441,19 +447,20 @@ def place_ships(game_id):
                     (game_id, player_id, r, c),
                 )
 
-            # Mark ships_placed
+            # Mark ships placed
             cur.execute(
                 "UPDATE game_players SET ships_placed=TRUE WHERE game_id=%s AND player_id=%s",
                 (game_id, player_id),
             )
 
-            # Attempt to activate the game
+            # Attempt to activate game
             check_and_activate_game(cur, game_id)
+
         conn.commit()
 
     return jsonify({
-    "status": "placed",
-    "message": "Ships placed successfully"
+        "status": "placed",
+        "message": "Ships placed successfully"
     }), 200
 
 
@@ -509,7 +516,7 @@ def fire(game_id):
             )
             gp = cur.fetchone()
             if not gp:
-                return err("Player is not in this game", 403)
+                return err("Player is not in this game", 400)
 
             # REF0064 fix:
             # Check that all players have placed ships before allowing fire
