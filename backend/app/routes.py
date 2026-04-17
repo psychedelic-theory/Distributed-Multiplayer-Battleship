@@ -62,7 +62,6 @@ def err(msg, code):
 
 @api.route("/reset", methods=["POST"])
 def reset():
-    """Clear all gameplay state and players for deterministic autograder runs."""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM moves")
@@ -70,9 +69,8 @@ def reset():
             cur.execute("DELETE FROM game_players")
             cur.execute("DELETE FROM games")
             cur.execute("DELETE FROM players")
-            cur.execute("ALTER SEQUENCE IF EXISTS moves_move_id_seq RESTART WITH 1")
-            cur.execute("ALTER SEQUENCE IF EXISTS games_game_id_seq RESTART WITH 1")
-            cur.execute("ALTER SEQUENCE IF EXISTS players_player_id_seq RESTART WITH 1")
+            # Use TRUNCATE with RESTART IDENTITY — more reliable than ALTER SEQUENCE
+            cur.execute("TRUNCATE TABLE moves, ships, game_players, games, players RESTART IDENTITY CASCADE")
         conn.commit()
     return jsonify({"status": "reset"}), 200
 
