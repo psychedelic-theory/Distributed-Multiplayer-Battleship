@@ -91,7 +91,7 @@ def create_player():
     if "player_id" in body:
         return err("bad_request", 400)
 
-    username =  (body.get("username")
+    username = (body.get("username")
                 or body.get("name")
                 or body.get("playerName"))
     if username is None:
@@ -104,10 +104,12 @@ def create_player():
     if not username:
         return err("bad_request", 400)
 
-    if len(username) > 100:
+    # max username length is 30 characters
+    if len(username) > 30:
         return err("bad_request", 400)
 
-    if not re.fullmatch(r"[A-Za-z0-9 _-]+", username):
+    # no spaces allowed; only letters, numbers, underscore, hyphen
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", username):
         return err("bad_request", 400)
 
     with get_conn() as conn:
@@ -123,10 +125,7 @@ def create_player():
                 )
                 player_id = cur.fetchone()["player_id"]
             except UniqueViolation:
-                conn.rollback()
                 return err("conflict", 409)
-
-        conn.commit()
 
     return jsonify({
         "player_id": player_id,
