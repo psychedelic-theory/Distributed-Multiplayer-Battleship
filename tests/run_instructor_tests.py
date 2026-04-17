@@ -7,6 +7,13 @@ Usage:
     python run_instructor_tests.py --json pool_instructor.json [--base-url URL]
 
 Default server: https://p01--backend--zm8jxh5c8bph.code.run
+
+Scoring (matches autograder):
+  Full credit    = 2 pts  (correct status code + correct body)
+  Partial credit = 1 pt   (correct status code only)
+  No credit      = 0 pts
+  Raw score out of 182  (91 tests x 2 pts each)
+  Scaled score  = raw / 182 * 100
 """
 
 import json
@@ -39,6 +46,7 @@ def dim(s):    return f"{DIM}{s}{RESET}"
 DEFAULT_BASE = "https://p01--backend--zm8jxh5c8bph.code.run"
 TEST_HEADER  = {"X-Test-Password": "clemson-test-2026"}
 TIMEOUT      = 10  # seconds per request
+MAX_RAW      = 182  # 91 tests * 2 pts each
 
 # Ship layouts used in setup helpers
 P1_SHIPS = [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}]
@@ -50,7 +58,6 @@ P2_SHIPS = [{"row": 5, "col": 5}, {"row": 6, "col": 6}, {"row": 7, "col": 7}]
 # ─────────────────────────────────────────────
 
 def reset(base):
-    """Hard-reset all server state."""
     try:
         r = requests.post(f"{base}/api/reset", timeout=TIMEOUT)
         return r.status_code == 200
@@ -87,15 +94,6 @@ def place_ships(base, game_id, player_id, ships):
 
 
 def setup_game_state(base, state):
-    """
-    Build the required game state before running a test.
-    Returns dict with player_id, game_id, player2_id as applicable.
-
-    States:
-      game_created  -> p1 created game (but p2 hasn't joined)
-      game_joined   -> p1 + p2 joined, NO ships placed
-      game_playing  -> both placed ships; game is active (p1 goes first)
-    """
     p1_id = create_player(base, f"p1_{int(time.time()*1000)%999999}")
     if p1_id is None:
         return None
@@ -133,26 +131,17 @@ def setup_game_state(base, state):
 # ─────────────────────────────────────────────
 
 def check_response_contains(body, expected):
-    """
-    Recursively check that every key/value in `expected` is present in `body`.
-    Supports special sentinels: __any_integer__, __any_string__
-    Returns list of failure strings (empty = all pass).
-    """
     failures = []
     if not expected:
         return failures
-
     if not isinstance(body, dict):
         failures.append(f"Response body is not a JSON object: {type(body).__name__}")
         return failures
-
     for key, expected_val in expected.items():
         if key not in body:
             failures.append(f"Missing key '{key}' in response")
             continue
-
         actual_val = body[key]
-
         if expected_val == "__any_integer__":
             if not isinstance(actual_val, int):
                 failures.append(f"Key '{key}': expected integer, got {type(actual_val).__name__} ({actual_val!r})")
@@ -163,12 +152,10 @@ def check_response_contains(body, expected):
             if actual_val is not None:
                 failures.append(f"Key '{key}': expected null, got {actual_val!r}")
         elif isinstance(expected_val, dict):
-            sub = check_response_contains(actual_val, expected_val)
-            failures.extend(sub)
+            failures.extend(check_response_contains(actual_val, expected_val))
         else:
             if actual_val != expected_val:
                 failures.append(f"Key '{key}': expected {expected_val!r}, got {actual_val!r}")
-
     return failures
 
 
@@ -177,7 +164,6 @@ def check_response_contains(body, expected):
 # ─────────────────────────────────────────────
 
 def interpolate_endpoint(endpoint, ctx):
-    """Replace {id} placeholders with actual IDs from context."""
     if ctx is None:
         return endpoint
     ep = endpoint
@@ -189,10 +175,8 @@ def interpolate_endpoint(endpoint, ctx):
 
 
 def interpolate_body(body, ctx):
-    """Replace player_id=1 and player_id=2 with actual IDs in test bodies."""
     if body is None or ctx is None:
         return body
-
     p1 = ctx.get("player_id")
     p2 = ctx.get("player2_id")
 
@@ -218,9 +202,6 @@ def interpolate_body(body, ctx):
 
 
 def run_test(base, test, ctx):
-    """
-    Execute a single test. Returns result dict.
-    """
     endpoint = interpolate_endpoint(test["endpoint"], ctx)
     url = base + endpoint
     method = test["method"].upper()
@@ -243,7 +224,7 @@ def run_test(base, test, ctx):
         elif method == "DELETE":
             resp = requests.delete(url, headers=headers, timeout=TIMEOUT)
         else:
-            return {"passed": False, "test_id": test["test_id"], "name": test["name"],
+            return {"credit": "none", "test_id": test["test_id"], "name": test["name"],
                     "error": f"Unknown method {method}"}
 
         actual_status = resp.status_code
@@ -258,10 +239,19 @@ def run_test(base, test, ctx):
         if expected_contains and isinstance(resp_body, dict):
             body_failures = check_response_contains(resp_body, expected_contains)
 
-        passed = status_ok and len(body_failures) == 0
+        # Determine credit level
+        if status_ok and len(body_failures) == 0:
+            credit = "full"
+        elif status_ok:
+            credit = "partial"
+        else:
+            credit = "none"
+
+        passed = (credit == "full")
 
         return {
             "passed": passed,
+            "credit": credit,
             "test_id": test["test_id"],
             "name": test["name"],
             "url": url,
@@ -276,13 +266,15 @@ def run_test(base, test, ctx):
         }
 
     except requests.exceptions.Timeout:
-        return {"passed": False, "test_id": test["test_id"], "name": test["name"],
+        return {"passed": False, "credit": "none", "test_id": test["test_id"], "name": test["name"],
                 "url": url, "error": "TIMEOUT", "actual_status": None,
-                "expected_status": expected_status, "body_failures": [], "response_body": None}
+                "expected_status": expected_status, "body_failures": [], "response_body": None,
+                "status_ok": False}
     except Exception as e:
-        return {"passed": False, "test_id": test["test_id"], "name": test["name"],
+        return {"passed": False, "credit": "none", "test_id": test["test_id"], "name": test["name"],
                 "url": url, "error": str(e), "actual_status": None,
-                "expected_status": expected_status, "body_failures": [], "response_body": None}
+                "expected_status": expected_status, "body_failures": [], "response_body": None,
+                "status_ok": False}
 
 
 # ─────────────────────────────────────────────
@@ -290,19 +282,27 @@ def run_test(base, test, ctx):
 # ─────────────────────────────────────────────
 
 def _print_result(r):
-    tid    = r["test_id"]
-    name   = r["name"][:55].ljust(55)
+    tid      = r["test_id"]
+    name     = r["name"][:52].ljust(52)
     actual   = r.get("actual_status")
     expected = r.get("expected_status")
     status   = f"{str(actual):>3} / {str(expected):<3}"
+    credit   = r.get("credit", "none")
 
-    if r["passed"]:
+    if credit == "full":
+        tag  = green("  [FULL]  ")
         icon = green("✓")
-        line = green(f"  {icon} [{tid}] {name}  {status}")
-        print(line)
+        print(green(f"  {icon} [{tid}] {name}  {status}{tag}"))
+    elif credit == "partial":
+        tag  = yellow("  [PART]  ")
+        icon = yellow("~")
+        print(yellow(f"  {icon} [{tid}] {name}  {status}{tag}"))
+        for bf in r.get("body_failures", []):
+            print(yellow(f"         -> body: {bf}"))
     else:
+        tag  = red("  [NONE]  ")
         icon = red("✗")
-        print(red(f"  {icon} [{tid}] {name}  {status}  <- FAIL"))
+        print(red(f"  {icon} [{tid}] {name}  {status}{tag}<- FAIL"))
         err = r.get("error")
         if err:
             print(red(f"         -> {err}"))
@@ -314,6 +314,102 @@ def _print_result(r):
             if len(body_str) > 160:
                 body_str = body_str[:160] + "..."
             print(red(f"         -> resp: {body_str}"))
+
+
+def _loading_bar(score_pct, width=40):
+    """Render a color-coded loading bar for the score."""
+    filled = int(round(score_pct / 100 * width))
+    empty  = width - filled
+    bar    = "█" * filled + "░" * empty
+
+    if score_pct >= 75:
+        bar_colored = green(bar)
+    elif score_pct >= 40:
+        bar_colored = yellow(bar)
+    else:
+        bar_colored = red(bar)
+
+    return f"[{bar_colored}] {score_pct:.2f}%"
+
+
+def _print_executive_summary(results, base):
+    total        = len(results)
+    full_credit  = sum(1 for r in results if r.get("credit") == "full")
+    partial_cred = sum(1 for r in results if r.get("credit") == "partial")
+    no_credit    = sum(1 for r in results if r.get("credit") == "none")
+
+    # Setup failures = tests that errored during state setup
+    setup_failures   = sum(1 for r in results if r.get("error", "").startswith("SETUP FAILED"))
+    # Restart failures = tests involving /restart that got wrong status
+    restart_failures = sum(1 for r in results
+                           if "restart" in r.get("url", "") and not r.get("status_ok", False))
+
+    raw_score    = (full_credit * 2) + (partial_cred * 1)
+    scaled_score = (raw_score / MAX_RAW) * 100
+
+    bar = _loading_bar(scaled_score)
+
+    W = 70
+    print(bold(f"\n{'═'*W}"))
+    print(bold(f"  EXECUTIVE SUMMARY"))
+    print(bold(f"{'═'*W}"))
+    print()
+
+    # Score bar
+    print(f"  {'Score':20s}  {bar}")
+    print()
+
+    # Test breakdown
+    print(bold(f"  {'─'*66}"))
+    print(bold(f"  TEST BREAKDOWN"))
+    print(bold(f"  {'─'*66}"))
+    print(f"  {'Pool tests total':<30s}  {total}")
+    print(f"  {'Scoreable tests':<30s}  {total}")
+    print(green( f"  {'Full credit (status + body)':<30s}  {full_credit}"))
+    print(yellow(f"  {'Partial credit (status only)':<30s}  {partial_cred}"))
+    print(red(   f"  {'No credit':<30s}  {no_credit}"))
+    print()
+
+    # Failure details
+    print(bold(f"  {'─'*66}"))
+    print(bold(f"  FAILURE DETAILS"))
+    print(bold(f"  {'─'*66}"))
+    rf_str = green(str(restart_failures)) if restart_failures == 0 else red(str(restart_failures))
+    sf_str = green(str(setup_failures))   if setup_failures   == 0 else red(str(setup_failures))
+    print(f"  {'Restart failures':<30s}  {rf_str}  (POST /api/test/games/{{id}}/restart)")
+    print(f"  {'Setup failures':<30s}  {sf_str}  (create/join/place broken)")
+    print()
+
+    # Score
+    print(bold(f"  {'─'*66}"))
+    print(bold(f"  SCORE"))
+    print(bold(f"  {'─'*66}"))
+
+    raw_str = f"{raw_score} / {MAX_RAW}"
+    if raw_score >= MAX_RAW * 0.75:
+        raw_colored = green(raw_str)
+    elif raw_score >= MAX_RAW * 0.40:
+        raw_colored = yellow(raw_str)
+    else:
+        raw_colored = red(raw_str)
+
+    scaled_str = f"{scaled_score:.2f} / 100"
+    if scaled_score >= 75:
+        scaled_colored = green(scaled_str)
+    elif scaled_score >= 40:
+        scaled_colored = yellow(scaled_str)
+    else:
+        scaled_colored = red(scaled_str)
+
+    print(f"  {'Raw score':<30s}  {raw_colored}")
+    print(f"  {'Scaled score':<30s}  {scaled_colored}")
+    print()
+    print(bold(f"{'═'*W}"))
+    print()
+
+    if restart_failures > 0:
+        print(yellow("  ⚠  Restart failures detected — fix POST /api/test/games/{id}/restart first."))
+        print()
 
 
 # ─────────────────────────────────────────────
@@ -355,31 +451,34 @@ def main():
     print(green("OK") if ok else yellow("FAILED (continuing anyway)"))
     print()
 
+    # Column headers
+    print(dim(f"  {'':2} {'ID':<9} {'Test Name':<52}  {'Got/Exp':<9} {'Credit'}"))
+    print(dim(f"  {'─'*68}"))
+
     results = []
-    passed_count = 0
-    failed_count = 0
 
     for test in tests:
         test_id = test["test_id"]
-        state = test.get("requires")
+        state   = test.get("requires")
 
         ctx = None
         if state:
             ctx = get_ctx(state)
             if ctx is None:
                 result = {
-                    "passed": False,
-                    "test_id": test_id,
-                    "name": test["name"],
-                    "url": base + test["endpoint"],
-                    "error": f"SETUP FAILED: could not create '{state}' state",
-                    "actual_status": None,
+                    "passed":    False,
+                    "credit":    "none",
+                    "test_id":   test_id,
+                    "name":      test["name"],
+                    "url":       base + test["endpoint"],
+                    "error":     f"SETUP FAILED: could not create '{state}' state",
+                    "actual_status":   None,
                     "expected_status": test["expected_status"],
-                    "body_failures": [],
-                    "response_body": None,
+                    "body_failures":   [],
+                    "response_body":   None,
+                    "status_ok":       False,
                 }
                 results.append(result)
-                failed_count += 1
                 _print_result(result)
                 continue
 
@@ -388,55 +487,43 @@ def main():
 
         result = run_test(base, test, ctx)
         results.append(result)
-
-        if result["passed"]:
-            passed_count += 1
-        else:
-            failed_count += 1
-
         _print_result(result)
 
-    # ── Summary ──
-    total = len(results)
-    print(bold(f"\n{'='*70}"))
-
-    summary = f"  RESULTS: {passed_count}/{total} passed  |  {failed_count} failed"
-    if failed_count == 0:
-        print(green(bold(summary)))
-    elif failed_count == total:
-        print(red(bold(summary)))
-    else:
-        print(yellow(bold(summary)))
-
-    print(bold(f"{'='*70}\n"))
-
-    if failed_count > 0:
-        print(bold(red("  FAILED TESTS SUMMARY")))
+    # ── Failed tests recap ──
+    failed = [r for r in results if r.get("credit") != "full"]
+    if failed:
+        print(bold(red(f"\n  FAILED / PARTIAL TESTS RECAP")))
         print(red(f"  {'─'*66}"))
-        for r in results:
-            if not r["passed"]:
-                eid   = r["test_id"]
-                name  = r["name"]
-                err   = r.get("error") or ""
-                got   = r.get("actual_status", "?")
-                want  = r.get("expected_status", "?")
-                bfail = r.get("body_failures", [])
+        for r in failed:
+            credit = r.get("credit", "none")
+            label  = yellow("[PART]") if credit == "partial" else red("[NONE]")
+            eid    = r["test_id"]
+            name   = r["name"]
+            err    = r.get("error") or ""
+            got    = r.get("actual_status", "?")
+            want   = r.get("expected_status", "?")
+            bfail  = r.get("body_failures", [])
 
-                print(red(f"\n  x [{eid}] {name}"))
-                if err:
-                    print(red(f"      Error   : {err}"))
-                else:
-                    print(red(f"      Status  : got {got}, want {want}"))
-                for bf in bfail:
-                    print(red(f"      Body    : {bf}"))
-                if r.get("response_body") is not None:
-                    body_str = json.dumps(r["response_body"], indent=None)
-                    if len(body_str) > 200:
-                        body_str = body_str[:200] + "..."
-                    print(red(f"      Response: {body_str}"))
+            print(f"\n  {label} [{eid}] {name}")
+            if err:
+                print(red(f"      Error   : {err}"))
+            else:
+                col = yellow if credit == "partial" else red
+                print(col(f"      Status  : got {got}, want {want}"))
+            for bf in bfail:
+                col = yellow if credit == "partial" else red
+                print(col(f"      Body    : {bf}"))
+            if r.get("response_body") is not None and credit != "partial":
+                body_str = json.dumps(r["response_body"], indent=None)
+                if len(body_str) > 200:
+                    body_str = body_str[:200] + "..."
+                print(red(f"      Response: {body_str}"))
 
-    print()
-    return 0 if failed_count == 0 else 1
+    # ── Executive summary ──
+    _print_executive_summary(results, base)
+
+    full_credit = sum(1 for r in results if r.get("credit") == "full")
+    return 0 if full_credit == len(results) else 1
 
 
 if __name__ == "__main__":
