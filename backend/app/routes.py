@@ -408,31 +408,35 @@ def place_ships(game_id):
             )
             gp = cur.fetchone()
             if not gp:
-                return err("Player is not in this game", 403)
+                return err("Player is not in this game", 400)
 
-            # Check duplicate placement BEFORE status check
+            # Cannot place twice (must come BEFORE status check)
             if gp["ships_placed"]:
                 return err("Ships already placed for this player", 409)
 
-            # New placements are only allowed during waiting state
+            # New placements only allowed during waiting state
             if game["status"] != "waiting":
                 return err("Ship placement is only allowed during waiting state", 400)
 
-            # Validate each ship coord
+            # Validate ship coordinates
             gs = game["grid_size"]
             coords = []
             for s in ships:
                 if not isinstance(s, dict):
                     return err("Each ship must be an object with integer row and col", 400)
+
                 r = s.get("row")
                 c = s.get("col")
+
                 if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
                     return err("Each ship must have integer row and col", 400)
+
                 if not (0 <= r < gs and 0 <= c < gs):
                     return err(f"Ship coordinate ({r},{c}) is out of bounds for grid size {gs}", 400)
+
                 coords.append((r, c))
 
-            # No duplicate coords
+            # No overlapping ships
             if len(set(coords)) != len(coords):
                 return err("Ships cannot overlap", 400)
 
@@ -443,14 +447,15 @@ def place_ships(game_id):
                     (game_id, player_id, r, c),
                 )
 
-            # Mark ships_placed
+            # Mark ships placed
             cur.execute(
                 "UPDATE game_players SET ships_placed=TRUE WHERE game_id=%s AND player_id=%s",
                 (game_id, player_id),
             )
 
-            # Attempt to activate the game
+            # Attempt to activate game
             check_and_activate_game(cur, game_id)
+
         conn.commit()
 
     return jsonify({
@@ -511,7 +516,7 @@ def fire(game_id):
             )
             gp = cur.fetchone()
             if not gp:
-                return err("Player is not in this game", 403)
+                return err("Player is not in this game", 400)
 
             # REF0064 fix:
             # Check that all players have placed ships before allowing fire
