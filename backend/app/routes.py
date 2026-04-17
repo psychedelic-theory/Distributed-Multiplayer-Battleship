@@ -296,7 +296,10 @@ def join_game(game_id):
                 return err("Game state changed, please retry join", 409)
         conn.commit()
 
-    return jsonify({"message": "Joined game successfully"}), 200
+    return jsonify({
+    "status": "joined",
+    "message": "Joined game successfully"
+    }), 200
 
 
 # ---------------------------------------------------------------------------
