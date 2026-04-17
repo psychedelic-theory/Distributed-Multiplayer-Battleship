@@ -87,29 +87,30 @@ def create_player():
     if body is None:
         return err("bad_request", 400)
 
-    # reject client supplied player_id
+    # Reject client-supplied player_id
     if "player_id" in body:
         return err("bad_request", 400)
 
-    username = (body.get("username")
-                or body.get("name")
-                or body.get("playerName"))
-    if username is None:
-        username = body.get("name")
+    username = body.get("username")
 
+    # Must be present and a string
+    if username is None:
+        return err("bad_request", 400)
     if not isinstance(username, str):
         return err("bad_request", 400)
 
     username = username.strip()
+
+    # Must not be empty
     if not username:
         return err("bad_request", 400)
 
-    # max username length is 30 characters
+    # Max length 30 characters
     if len(username) > 30:
         return err("bad_request", 400)
 
-    # no spaces allowed; only letters, numbers, underscore, hyphen
-    if not re.fullmatch(r"[A-Za-z0-9_-]+", username):
+    # Only alphanumeric + underscore (NO spaces, NO dashes, NO special chars)
+    if not re.fullmatch(r"[A-Za-z0-9_]+", username):
         return err("bad_request", 400)
 
     with get_conn() as conn:
@@ -125,15 +126,13 @@ def create_player():
                 )
                 player_id = cur.fetchone()["player_id"]
             except UniqueViolation:
+                conn.rollback()
                 return err("conflict", 409)
 
-    return jsonify({
-        "player_id": player_id,
-        "playerId": player_id,
-        "username": username,
-        "name": username,
-        "displayName": username,
-    }), 201
+        conn.commit()
+
+    # Return ONLY player_id — nothing else
+    return jsonify({"player_id": player_id}), 201
 
 
 # ---------------------------------------------------------------------------
