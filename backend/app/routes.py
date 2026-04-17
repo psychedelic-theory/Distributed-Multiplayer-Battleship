@@ -198,7 +198,7 @@ def create_game():
         return err("grid_size must be an integer between 5 and 15", 400)
 
     if not isinstance(max_players, int) or max_players < 2:
-        return err("max_players must be an integer >= 1", 400)
+        return err("max_players must be an integer >= 2", 400)
 
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -207,7 +207,7 @@ def create_game():
             if not cur.fetchone():
                 return err("Creator player not found", 404)
 
-            # Create game
+            # Create game only; do NOT auto-join creator
             cur.execute(
                 """
                 INSERT INTO games (grid_size, max_players, status, current_turn_index)
@@ -217,23 +217,15 @@ def create_game():
             )
             game_id = cur.fetchone()["game_id"]
 
-            # Auto-add creator at turn_order=0
-            cur.execute(
-                """
-                INSERT INTO game_players (game_id, player_id, turn_order)
-                VALUES (%s, %s, 0)
-                """,
-                (game_id, creator_id),
-            )
         conn.commit()
 
     return jsonify({
-                    "game_id": game_id,
-                    "status": "waiting_setup",
-                    "waiting": True,
-                    "grid_size": grid_size,
-                    "max_players": max_players,
-                   }), 201
+        "game_id": game_id,
+        "status": "waiting_setup",
+        "waiting": True,
+        "grid_size": grid_size,
+        "max_players": max_players,
+    }), 201
 
 
 # ---------------------------------------------------------------------------
