@@ -306,7 +306,7 @@ def join_game(game_id):
 
 @api.route("/games/<int:game_id>", methods=["GET"])
 def get_game(game_id):
-    current_player_id = None
+    current_turn_player_id = None
     active_players = 0
     total_moves = 0
 
@@ -344,7 +344,7 @@ def get_game(game_id):
             total_moves = cur.fetchone()["cnt"]
 
             if game["status"] == "active":
-                current_player_id = get_current_player_id(
+                current_turn_player_id = get_current_player_id(
                     cur, game_id, game["current_turn_index"]
                 )
 
@@ -357,7 +357,7 @@ def get_game(game_id):
         "status": api_status,
         "current_turn_index": game["current_turn_index"],
         "active_players": active_players,
-        "current_player_id": current_player_id,
+        "current_turn_player_id": current_turn_player_id,
         "total_moves": total_moves,
     }), 200
 
