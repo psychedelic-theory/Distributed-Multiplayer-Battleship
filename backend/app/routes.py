@@ -64,13 +64,10 @@ def err(msg, code):
 def reset():
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM moves")
-            cur.execute("DELETE FROM ships")
-            cur.execute("DELETE FROM game_players")
-            cur.execute("DELETE FROM games")
-            cur.execute("DELETE FROM players")
-            # Use TRUNCATE with RESTART IDENTITY — more reliable than ALTER SEQUENCE
-            cur.execute("TRUNCATE TABLE moves, ships, game_players, games, players RESTART IDENTITY CASCADE")
+            cur.execute("""
+                TRUNCATE TABLE moves, ships, game_players, games, players
+                RESTART IDENTITY CASCADE
+            """)
         conn.commit()
     return jsonify({"status": "reset"}), 200
 
@@ -130,7 +127,7 @@ def create_player():
         conn.commit()
 
     # Return ONLY player_id — nothing else
-    return jsonify({"player_id": player_id}), 201
+    return jsonify({'player_id': player_id}), 201
 
 
 # ---------------------------------------------------------------------------
