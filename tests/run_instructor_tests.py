@@ -7,6 +7,8 @@ Usage:
     python run_instructor_tests.py [--base-url URL]
 
 Default server: https://p01--backend--zm8jxh5c8bph.code.run
+
+Test Command: python run_instructor_tests.py --json pool_instructor.json
 """
 
 import json
