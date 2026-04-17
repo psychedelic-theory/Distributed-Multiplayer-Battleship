@@ -339,7 +339,7 @@ def _print_executive_summary(results, base):
     no_credit    = sum(1 for r in results if r.get("credit") == "none")
 
     # Setup failures = tests that errored during state setup
-    setup_failures   = sum(1 for r in results if r.get("error", "").startswith("SETUP FAILED"))
+    setup_failures   = sum(1 for r in results if (r.get("error") or "").startswith("SETUP FAILED"))
     # Restart failures = tests involving /restart that got wrong status
     restart_failures = sum(1 for r in results
                            if "restart" in r.get("url", "") and not r.get("status_ok", False))
