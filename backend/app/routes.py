@@ -152,6 +152,16 @@ def get_player(player_id):
 def get_stats(player_id):
     with get_conn() as conn:
         with conn.cursor() as cur:
+
+            # FIRST: verify player exists
+            cur.execute(
+                "SELECT 1 FROM players WHERE player_id=%s",
+                (player_id,),
+            )
+            if cur.fetchone() is None:
+                return err("Player not found", 404)
+
+            # THEN: fetch stats
             cur.execute(
                 """
                 SELECT games_played, wins, losses, total_shots, total_hits, accuracy
@@ -160,9 +170,6 @@ def get_stats(player_id):
                 (player_id,),
             )
             row = cur.fetchone()
-
-    if not row:
-        return err("Player not found", 404)
 
     return jsonify({
         "games_played": row["games_played"],
