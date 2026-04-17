@@ -496,7 +496,7 @@ def fire(game_id):
             if game["status"] == "finished":
                 return err("Game is not active", 400)
             if game["status"] != "active":
-                return err("Game is not active", 403)
+                return err("Game is not active", 400)
 
             # Player must be in this game
             cur.execute(
