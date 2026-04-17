@@ -629,3 +629,64 @@ def get_moves(game_id):
         for r in rows
     ]
     return jsonify({"moves": moves}), 200
+
+# ---------------------------------------------------------------------------
+# GET /api/players
+# ---------------------------------------------------------------------------
+
+@api.route("/players", methods=["GET"])
+def list_players():
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT player_id, username
+                FROM players
+                ORDER BY player_id ASC
+                """
+            )
+            rows = cur.fetchall()
+
+    return jsonify({
+        "players": [
+            {
+                "player_id": row["player_id"],
+                "playerId": row["player_id"],
+                "username": row["username"],
+                "name": row["username"],
+                "displayName": row["username"],
+            }
+            for row in rows
+        ]
+    }), 200
+
+
+# ---------------------------------------------------------------------------
+# GET /api/games
+# ---------------------------------------------------------------------------
+
+@api.route("/games", methods=["GET"])
+def list_games():
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT game_id, grid_size, max_players, status, current_turn_index
+                FROM games
+                ORDER BY game_id ASC
+                """
+            )
+            rows = cur.fetchall()
+
+    return jsonify({
+        "games": [
+            {
+                "game_id": row["game_id"],
+                "grid_size": row["grid_size"],
+                "max_players": row["max_players"],
+                "status": row["status"],
+                "current_turn_index": row["current_turn_index"],
+            }
+            for row in rows
+        ]
+    }), 200
