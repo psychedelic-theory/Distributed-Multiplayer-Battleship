@@ -1,0 +1,1570 @@
+[
+  {
+    "test_id": "REF0001",
+    "name": "Valid player creation returns 201 with player_id",
+    "why": "The most basic contract: POST /api/players with a valid username must return 201 and an integer player_id. Every other test depends on this working.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "testplayer"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": "__any_integer__"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0002",
+    "name": "Player creation response contains player_id as integer not string",
+    "why": "player_id must be an integer type, not a string. Clients rely on this for subsequent requests.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "intcheck"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": "__any_integer__"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0003",
+    "name": "Missing username field returns 400",
+    "why": "Submitting an empty body with no username field must be rejected. The server must validate required fields.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {},
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0004",
+    "name": "Empty string username returns 400",
+    "why": "An empty string is not a valid username. The spec requires minLength 1. Server must reject it.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": ""
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0005",
+    "name": "Username with special characters returns 400",
+    "why": "The spec restricts usernames to alphanumeric and underscores only. Special characters like ! must be rejected.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "bad!!!name"
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0006",
+    "name": "Username with spaces returns 400",
+    "why": "Spaces are not allowed in usernames per the spec pattern ^[A-Za-z0-9_]+$. Server must reject.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "bad name"
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0007",
+    "name": "Username at maximum length 30 chars returns 201",
+    "why": "A 30-character username is at the boundary of the spec maxLength. Server must accept it.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": "__any_integer__"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0008",
+    "name": "Username over maximum length 31 chars returns 400",
+    "why": "A 31-character username exceeds the spec maxLength of 30. Server must reject it.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0009",
+    "name": "Username with underscore is valid",
+    "why": "Underscores are explicitly allowed by the spec pattern. A username like test_user must be accepted.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "test_user"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": "__any_integer__"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0010",
+    "name": "Duplicate username returns 409",
+    "why": "Creating a player with a username that already exists must return 409 Conflict. This is the majority-rules spec contract.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "duplicate_test"
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "__any_string__"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0011",
+    "name": "Player creation response has no extra unexpected fields",
+    "why": "The spec uses additionalProperties: false. The response must contain player_id and nothing that contradicts the schema.",
+    "method": "POST",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": {
+      "username": "schemacheck"
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "player_id": "__any_integer__"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0012",
+    "name": "Non-existent player stats returns 404",
+    "why": "Requesting stats for a player ID that does not exist must return 404. Servers must not return 200 with empty data.",
+    "method": "GET",
+    "endpoint": "/api/players/999999/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0013",
+    "name": "Fresh player stats has all zero numeric fields",
+    "why": "A newly created player with no games played must return zeros for games_played, wins, losses, total_shots, total_hits.",
+    "method": "GET",
+    "endpoint": "/api/players/{id}/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "total_shots": 0,
+      "total_hits": 0
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0014",
+    "name": "Fresh player stats accuracy is zero float",
+    "why": "A player with no shots taken must return accuracy of 0.0 as a float, not an integer 0.",
+    "method": "GET",
+    "endpoint": "/api/players/{id}/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0015",
+    "name": "Stats response contains all required fields",
+    "why": "Response must include games_played, wins, losses, total_shots, total_hits, and accuracy. Missing any field violates the spec.",
+    "method": "GET",
+    "endpoint": "/api/players/{id}/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "total_shots": 0,
+      "total_hits": 0,
+      "accuracy": 0
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0016",
+    "name": "Player ID zero returns 404",
+    "why": "Player ID 0 is below the spec minimum of 1. Server must return 404 or 400, not a server error.",
+    "method": "GET",
+    "endpoint": "/api/players/0/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0017",
+    "name": "Valid game creation returns 201 with game_id and waiting_setup status",
+    "why": "Core contract for game creation. Must return 201, an integer game_id, and status of waiting_setup.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "game_id": "__any_integer__",
+      "status": "waiting_setup"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0018",
+    "name": "Missing creator_id returns 400",
+    "why": "creator_id is a required field per the spec schema. Omitting it must result in 400.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0019",
+    "name": "Missing grid_size returns 400",
+    "why": "grid_size is a required field per the spec schema. Omitting it must result in 400.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0020",
+    "name": "Missing max_players returns 400",
+    "why": "max_players is a required field per the spec schema. Omitting it must result in 400.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0021",
+    "name": "grid_size below minimum of 5 returns 400",
+    "why": "The spec sets minimum grid_size at 5. A value of 4 must be rejected with 400.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 4,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0022",
+    "name": "grid_size above maximum of 15 returns 400",
+    "why": "The spec sets maximum grid_size at 15. A value of 16 must be rejected with 400.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 16,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0023",
+    "name": "grid_size at minimum boundary of 5 returns 201",
+    "why": "grid_size of exactly 5 is the lower boundary. The server must accept this as valid.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 5,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "game_id": "__any_integer__",
+      "status": "waiting_setup"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0024",
+    "name": "grid_size at maximum boundary of 15 returns 201",
+    "why": "grid_size of exactly 15 is the upper boundary. The server must accept this as valid.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 15,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "game_id": "__any_integer__",
+      "status": "waiting_setup"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0025",
+    "name": "max_players below minimum of 2 returns 400",
+    "why": "The spec sets minimum max_players at 2. A value of 1 must be rejected with 400.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8,
+      "max_players": 1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0026",
+    "name": "Non-existent creator_id returns 400 or 404",
+    "why": "Providing a creator_id that does not reference any player must be rejected. Server should not silently create orphaned games.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 999999,
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0027",
+    "name": "Game creation response status is exactly waiting_setup",
+    "why": "The status field in the game creation response must be the exact string waiting_setup, not waiting or setup or any other variant.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": 8,
+      "max_players": 2
+    },
+    "expected_status": 201,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0028",
+    "name": "Non-existent game ID returns 404",
+    "why": "Requesting a game that does not exist must return 404. Servers must not return 200 with null fields.",
+    "method": "GET",
+    "endpoint": "/api/games/999999",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0029",
+    "name": "Game detail response contains all required fields",
+    "why": "GET /api/games/{id} must return game_id, grid_size, status, players array, current_turn_player_id, and total_moves.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_id": "__any_integer__",
+      "status": "waiting_setup",
+      "total_moves": 0
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0030",
+    "name": "current_turn_player_id is null before game starts",
+    "why": "Before both players have placed ships, current_turn_player_id must be null. It should only be set once the game is playing.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "current_turn_player_id": null,
+      "status": "waiting_setup"
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0031",
+    "name": "total_moves is zero on a fresh game",
+    "why": "A newly created game with no moves taken must return total_moves of 0.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "total_moves": 0
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0032",
+    "name": "Game detail shows players array with joined players",
+    "why": "After both players join, the players array must contain 2 entries each with player_id and ships_remaining.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0033",
+    "name": "Game detail shows playing status after ships placed",
+    "why": "Once both players place ships, game status must transition to playing.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "playing"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0034",
+    "name": "current_turn_player_id is set when game is playing",
+    "why": "Once game status is playing, current_turn_player_id must be a non-null integer identifying whose turn it is.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "playing"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0035",
+    "name": "Negative game ID returns 404",
+    "why": "A negative game ID is invalid. Server must return 404 not a server error.",
+    "method": "GET",
+    "endpoint": "/api/games/0",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0036",
+    "name": "Valid join returns 200",
+    "why": "A player joining an open game in waiting_setup status must receive 200.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0037",
+    "name": "Missing player_id in join body returns 400",
+    "why": "player_id is required in the join request body. Omitting it must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {},
+    "body": {},
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0038",
+    "name": "Joining a full game returns 400",
+    "why": "Once a game has reached max_players, any additional join attempt must return 400. This is the spec majority-rules contract.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0039",
+    "name": "Player joining a game they are already in returns 400",
+    "why": "A player cannot join the same game twice. The server must detect this and return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0040",
+    "name": "Joining a non-existent game returns 404",
+    "why": "Attempting to join a game ID that does not exist must return 404.",
+    "method": "POST",
+    "endpoint": "/api/games/999999/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0041",
+    "name": "Joining a game already in playing status returns 400",
+    "why": "Once a game has transitioned to playing status, new players cannot join. Must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0042",
+    "name": "Valid ship placement returns 200",
+    "why": "Placing exactly 3 valid ships for a joined player must return 200.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0043",
+    "name": "Placement with fewer than 3 ships returns 400",
+    "why": "The spec requires exactly 3 ship positions. Submitting only 2 must be rejected with 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 1,
+          "col": 1
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0044",
+    "name": "Placement with empty ships array returns 400",
+    "why": "An empty ships array has no positions. Server must reject this with 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": []
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0045",
+    "name": "Placement with duplicate coordinates returns 400",
+    "why": "Two ships at the same cell is invalid. Server must detect the overlap and return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0046",
+    "name": "Placement with out-of-bounds row returns 400",
+    "why": "A ship position with row equal to grid_size is out of bounds. Server must reject with 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 99,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0047",
+    "name": "Placement with negative coordinates returns 400",
+    "why": "Negative row or col values are invalid. Server must reject with 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": -1,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0048",
+    "name": "Ships submitted as arrays instead of objects returns 400",
+    "why": "Ships must be objects with row and col keys, not arrays. Sending [[0,0],[2,2],[4,4]] must be rejected.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        [
+          0,
+          0
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          4,
+          4
+        ]
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0049",
+    "name": "Placing ships twice for same player returns 409",
+    "why": "A player cannot place ships more than once. The second placement attempt must return 409.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 409,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0050",
+    "name": "Placing ships before joining returns 400 or 403",
+    "why": "A player who has not joined the game cannot place ships. Server must reject with 400 or 403.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 2,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0051",
+    "name": "Missing player_id in place body returns 400",
+    "why": "player_id is required in the place request. Omitting it must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0052",
+    "name": "Valid fire by player 1 returns 200",
+    "why": "Player 1 firing on a valid cell during their turn must return 200. This is the core playing mechanic.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 5,
+      "col": 5
+    },
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0053",
+    "name": "Fire response contains result field",
+    "why": "The fire response must contain a result field with value hit or miss. No other values are valid per spec.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 5,
+      "col": 5
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "result": "__any_string__"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0054",
+    "name": "Fire response contains next_player_id",
+    "why": "After a valid shot, next_player_id must be present in the response indicating whose turn is next.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 5,
+      "col": 5
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "next_player_id": "__any_integer__"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0055",
+    "name": "Fire response contains game_status",
+    "why": "The fire response must contain game_status reflecting the current game state after the shot.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 5,
+      "col": 5
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_status": "playing"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0056",
+    "name": "Fire out of turn by player 2 returns 403",
+    "why": "Player 2 cannot fire when it is player 1s turn. The server must return 403 Forbidden.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 2,
+      "row": 5,
+      "col": 5
+    },
+    "expected_status": 403,
+    "expected_response_contains": {
+      "error": "__any_string__"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0057",
+    "name": "Fire on already targeted cell returns 409",
+    "why": "Firing on a cell that has already been targeted must return 409 Conflict.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 409,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0058",
+    "name": "Fire with out-of-bounds row returns 400",
+    "why": "A fire request targeting a row at or beyond grid_size is out of bounds and must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 99,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0059",
+    "name": "Fire with out-of-bounds col returns 400",
+    "why": "A fire request targeting a column at or beyond grid_size is out of bounds and must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 99
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0060",
+    "name": "Fire with negative row returns 400",
+    "why": "Negative row values are invalid coordinates. Server must reject with 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": -1,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0061",
+    "name": "Fire on cell at row 0 col 0 is valid",
+    "why": "The top-left corner is a valid target. Servers must not treat 0,0 as a special or invalid case.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0062",
+    "name": "Fire without player_id returns 400",
+    "why": "player_id is required in the fire request body. Omitting it must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0063",
+    "name": "Fire on a finished game returns 400",
+    "why": "Once a game has status finished, no more shots are allowed. Server must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 5,
+      "col": 5
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0064",
+    "name": "Fire before placing ships returns 400 or 403",
+    "why": "A player who has not placed ships cannot fire. The game is not in playing status yet.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0065",
+    "name": "Fire total_moves increments after shot",
+    "why": "After a valid fire, GET /api/games/{id} must show total_moves incremented by 1.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "total_moves": 0,
+      "status": "playing"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0066",
+    "name": "Move history at game start is empty array",
+    "why": "GET /api/games/{id}/moves at the start of a game with no shots taken must return 200 and an empty array.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}/moves",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0067",
+    "name": "Move history for non-existent game returns 404",
+    "why": "Requesting move history for a game that does not exist must return 404.",
+    "method": "GET",
+    "endpoint": "/api/games/999999/moves",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0068",
+    "name": "Valid restart returns 200",
+    "why": "POST /api/test/games/{id}/restart with correct auth header must return 200.",
+    "method": "POST",
+    "endpoint": "/api/test/games/{id}/restart",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {},
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0069",
+    "name": "Restart without auth header returns 403",
+    "why": "The restart endpoint requires X-Test-Password header. Omitting it must return 403.",
+    "method": "POST",
+    "endpoint": "/api/test/games/{id}/restart",
+    "headers": {},
+    "body": {},
+    "expected_status": 403,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0070",
+    "name": "Restart with wrong password returns 403",
+    "why": "An incorrect X-Test-Password value must be rejected with 403. The endpoint must validate the password.",
+    "method": "POST",
+    "endpoint": "/api/test/games/{id}/restart",
+    "headers": {
+      "X-Test-Password": "wrong-password"
+    },
+    "body": {},
+    "expected_status": 403,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0071",
+    "name": "After restart game status returns to waiting_setup",
+    "why": "After a successful restart, GET /api/games/{id} must show status of waiting_setup.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "waiting_setup"
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0072",
+    "name": "After restart total_moves is zero",
+    "why": "After a successful restart, total_moves must be reset to 0.",
+    "method": "GET",
+    "endpoint": "/api/games/{id}",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "total_moves": 0
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0073",
+    "name": "Restart non-existent game returns 404",
+    "why": "Attempting to restart a game ID that does not exist must return 404.",
+    "method": "POST",
+    "endpoint": "/api/test/games/999999/restart",
+    "headers": {
+      "X-Test-Password": "clemson-test-2026"
+    },
+    "body": {},
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0074",
+    "name": "GET /api/games returns 200 on empty server",
+    "why": "Listing all games on an empty server must return 200. The response should be an array, possibly empty.",
+    "method": "GET",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0075",
+    "name": "GET /api/players returns 200",
+    "why": "Listing all players must return 200. Empty array is valid.",
+    "method": "GET",
+    "endpoint": "/api/players",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0076",
+    "name": "Very large non-existent game ID returns 404",
+    "why": "A numeric game ID that does not exist must return 404 not a server error. Large IDs like 999998 confirm the server handles missing resources correctly without crashing.",
+    "method": "GET",
+    "endpoint": "/api/games/999998",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0077",
+    "name": "Extremely large player ID returns 404",
+    "why": "A very large player ID like 999999999 must return 404 not a server error.",
+    "method": "GET",
+    "endpoint": "/api/players/999999999/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0078",
+    "name": "Fire with missing row returns 400",
+    "why": "The row field is required for a fire request. Omitting it must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "col": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0079",
+    "name": "Fire with missing col returns 400",
+    "why": "The col field is required for a fire request. Omitting it must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0080",
+    "name": "Create game with string grid_size returns 400",
+    "why": "grid_size must be an integer. Sending it as a string must be rejected with 400.",
+    "method": "POST",
+    "endpoint": "/api/games",
+    "headers": {},
+    "body": {
+      "creator_id": 1,
+      "grid_size": "eight",
+      "max_players": 2
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor"
+  },
+  {
+    "test_id": "REF0081",
+    "name": "Join with string player_id returns 400",
+    "why": "player_id must be an integer. Sending it as a string must be rejected with 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {},
+    "body": {
+      "player_id": "one"
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0082",
+    "name": "Place with missing ships field returns 400",
+    "why": "The ships field is required in a place request. Omitting it must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0083",
+    "name": "Entirely empty fire body returns 400",
+    "why": "Sending an empty body to the fire endpoint must return 400.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {},
+    "expected_status": 400,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0084",
+    "name": "Join response body contains status joined",
+    "why": "The join response body must include a status field with value joined, not just return 200 with an empty body.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {},
+    "body": {
+      "player_id": 1
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "joined"
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0085",
+    "name": "Joining with non-existent player_id returns 404",
+    "why": "If the player_id in the join request does not reference any known player, the server must return 404 not 400 or 200.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/join",
+    "headers": {},
+    "body": {
+      "player_id": 999999
+    },
+    "expected_status": 404,
+    "expected_response_contains": {},
+    "source_team": "instructor",
+    "requires": "game_created"
+  },
+  {
+    "test_id": "REF0086",
+    "name": "Place response body contains status placed",
+    "why": "The place response body must include a status field with value placed confirming ship placement was accepted by the server.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "status": "placed"
+    },
+    "source_team": "instructor",
+    "requires": "game_joined"
+  },
+  {
+    "test_id": "REF0087",
+    "name": "Placing ships when already placed returns 409 Conflict",
+    "why": "A second ship placement attempt by the same player must return 409 Conflict, not 400. The first placement succeeded so a repeat is a conflict not a bad request.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/place",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "ships": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    "expected_status": 409,
+    "expected_response_contains": {
+      "error": "__any_string__"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0088",
+    "name": "Fire on a ship cell returns result hit",
+    "why": "When a shot lands on an opponent ship cell the result field must be the exact string hit. Setup places player 2 ships at row 0 col 1 so player 1 firing there must hit.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 0,
+      "col": 1
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "result": "hit"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0089",
+    "name": "Fire on an empty cell returns result miss",
+    "why": "When a shot lands on a cell with no ship the result field must be the exact string miss. Firing at row 7 col 7 which has no setup ships must return miss.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 7,
+      "col": 7
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "result": "miss"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0090",
+    "name": "Fire response contains game_status field",
+    "why": "The fire response must include game_status reflecting current game state after the shot. This field is required by the spec alongside result and next_player_id.",
+    "method": "POST",
+    "endpoint": "/api/games/{id}/fire",
+    "headers": {},
+    "body": {
+      "player_id": 1,
+      "row": 5,
+      "col": 5
+    },
+    "expected_status": 200,
+    "expected_response_contains": {
+      "game_status": "playing"
+    },
+    "source_team": "instructor",
+    "requires": "game_playing"
+  },
+  {
+    "test_id": "REF0091",
+    "name": "Stats response contains all six required fields",
+    "why": "The stats response must include all six spec-required fields: games_played, wins, losses, total_shots, total_hits, and accuracy. Missing any field fails the schema.",
+    "method": "GET",
+    "endpoint": "/api/players/{id}/stats",
+    "headers": {},
+    "body": null,
+    "expected_status": 200,
+    "expected_response_contains": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "total_shots": 0,
+      "total_hits": 0,
+      "accuracy": 0
+    },
+    "source_team": "instructor",
+    "requires": "game_created"
+  }
+]
