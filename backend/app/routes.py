@@ -320,12 +320,13 @@ def join_game(game_id):
 def get_game(game_id):
     current_player_id = None
     active_players = 0
+    total_moves = 0
 
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT game_id, grid_size, status, current_turn_index
+                SELECT game_id, grid_size, max_players, status, current_turn_index
                 FROM games WHERE game_id=%s
                 """,
                 (game_id,),
@@ -335,23 +336,41 @@ def get_game(game_id):
                 return err("Game not found", 404)
 
             cur.execute(
-                "SELECT COUNT(*) AS cnt FROM game_players WHERE game_id=%s AND is_eliminated=FALSE",
+                """
+                SELECT COUNT(*) AS cnt
+                FROM game_players
+                WHERE game_id=%s AND is_eliminated=FALSE
+                """,
                 (game_id,),
             )
             active_players = cur.fetchone()["cnt"]
+
+            cur.execute(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM moves
+                WHERE game_id=%s
+                """,
+                (game_id,),
+            )
+            total_moves = cur.fetchone()["cnt"]
 
             if game["status"] == "active":
                 current_player_id = get_current_player_id(
                     cur, game_id, game["current_turn_index"]
                 )
 
+    api_status = "waiting_setup" if game["status"] == "waiting" else game["status"]
+
     return jsonify({
-        "game_id":             game["game_id"],
-        "grid_size":           game["grid_size"],
-        "status":              game["status"],
-        "current_turn_index":  game["current_turn_index"],
-        "active_players":      active_players,
-        "current_player_id":   current_player_id,
+        "game_id": game["game_id"],
+        "grid_size": game["grid_size"],
+        "max_players": game["max_players"],
+        "status": api_status,
+        "current_turn_index": game["current_turn_index"],
+        "active_players": active_players,
+        "current_player_id": current_player_id,
+        "total_moves": total_moves,
     }), 200
 
 
