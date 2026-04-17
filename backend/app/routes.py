@@ -380,7 +380,7 @@ def place_ships(game_id):
         return err("Request body must be valid JSON", 400)
 
     player_id = body.get("player_id") or body.get("playerId")
-    ships     = body.get("ships")
+    ships = body.get("ships")
 
     if player_id is None:
         return err("player_id is required", 400)
@@ -394,14 +394,12 @@ def place_ships(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT status, grid_size FROM games WHERE game_id=%s FOR UPDATE", (game_id,)
+                "SELECT status, grid_size FROM games WHERE game_id=%s FOR UPDATE",
+                (game_id,),
             )
             game = cur.fetchone()
             if not game:
                 return err("Game not found", 404)
-
-            if game["status"] != "waiting":
-                return err("Ship placement is only allowed during waiting state", 400)
 
             # Player must be in the game
             cur.execute(
@@ -412,9 +410,13 @@ def place_ships(game_id):
             if not gp:
                 return err("Player is not in this game", 403)
 
-            # Cannot place twice
+            # Check duplicate placement BEFORE status check
             if gp["ships_placed"]:
                 return err("Ships already placed for this player", 409)
+
+            # New placements are only allowed during waiting state
+            if game["status"] != "waiting":
+                return err("Ship placement is only allowed during waiting state", 400)
 
             # Validate each ship coord
             gs = game["grid_size"]
@@ -430,7 +432,7 @@ def place_ships(game_id):
                     return err(f"Ship coordinate ({r},{c}) is out of bounds for grid size {gs}", 400)
                 coords.append((r, c))
 
-            # No duplicate coords (overlap)
+            # No duplicate coords
             if len(set(coords)) != len(coords):
                 return err("Ships cannot overlap", 400)
 
@@ -452,8 +454,8 @@ def place_ships(game_id):
         conn.commit()
 
     return jsonify({
-    "status": "placed",
-    "message": "Ships placed successfully"
+        "status": "placed",
+        "message": "Ships placed successfully"
     }), 200
 
 
