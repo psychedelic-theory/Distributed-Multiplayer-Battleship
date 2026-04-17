@@ -451,7 +451,10 @@ def place_ships(game_id):
             check_and_activate_game(cur, game_id)
         conn.commit()
 
-    return jsonify({"message": "Ships placed successfully"}), 200
+    return jsonify({
+    "status": "placed",
+    "message": "Ships placed successfully"
+    }), 200
 
 
 # ---------------------------------------------------------------------------
@@ -598,7 +601,7 @@ def fire(game_id):
     return jsonify({
         "result":         result,
         "next_player_id": next_player_id,
-        "game_status":    "active",
+        "game_status":    "playing",
     }), 200
 
 
