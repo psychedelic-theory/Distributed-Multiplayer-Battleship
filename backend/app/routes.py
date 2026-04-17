@@ -414,7 +414,7 @@ def place_ships(game_id):
 
             # Cannot place twice
             if gp["ships_placed"]:
-                return err("Ships already placed for this player", 400)
+                return err("Ships already placed for this player", 409)
 
             # Validate each ship coord
             gs = game["grid_size"]
@@ -468,8 +468,8 @@ def fire(game_id):
         return err("Request body must be valid JSON", 400)
 
     player_id = body.get("player_id") or body.get("playerId")
-    row       = body.get("row")
-    col       = body.get("col")
+    row = body.get("row")
+    col = body.get("col")
 
     if player_id is None or row is None or col is None:
         return err("player_id, row, and col are required", 400)
@@ -480,48 +480,79 @@ def fire(game_id):
         with conn.cursor() as cur:
             # Game must exist
             cur.execute(
-                "SELECT game_id, status, current_turn_index, grid_size FROM games WHERE game_id=%s FOR UPDATE",
+                """
+                SELECT game_id, status, current_turn_index, grid_size
+                FROM games
+                WHERE game_id=%s
+                FOR UPDATE
+                """,
                 (game_id,),
             )
             game = cur.fetchone()
             if not game:
                 return err("Game not found", 404)
 
-            # Reject fire when the game has not started or is already over.
+            # Reject fire when the game has not started or is already over
             if game["status"] == "finished":
                 return err("Game is not active", 400)
             if game["status"] != "active":
                 return err("Game is not active", 403)
 
-            # 403: player must be in this game
+            # Player must be in this game
             cur.execute(
-                "SELECT is_eliminated FROM game_players WHERE game_id=%s AND player_id=%s",
+                """
+                SELECT is_eliminated
+                FROM game_players
+                WHERE game_id=%s AND player_id=%s
+                """,
                 (game_id, player_id),
             )
             gp = cur.fetchone()
             if not gp:
                 return err("Player is not in this game", 403)
 
-            # 403: it must be this player's turn
+            # REF0064 fix:
+            # Check that all players have placed ships before allowing fire
+            cur.execute(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM game_players
+                WHERE game_id=%s AND ships_placed=FALSE
+                """,
+                (game_id,),
+            )
+            not_ready = cur.fetchone()["cnt"]
+            if not_ready > 0:
+                return err("Game is not ready to start", 400)
+
+            # It must be this player's turn
             current_pid = get_current_player_id(cur, game_id, game["current_turn_index"])
             if current_pid != player_id:
                 return err("It is not this player's turn", 403)
 
             # Validate coordinates
             gs = game["grid_size"]
-            if not (isinstance(row, int) and isinstance(col, int) and 0 <= row < gs and 0 <= col < gs):
+            if not (
+                isinstance(row, int)
+                and isinstance(col, int)
+                and 0 <= row < gs
+                and 0 <= col < gs
+            ):
                 return err(f"Coordinates ({row},{col}) are out of bounds", 400)
 
             # Reject repeat shots by the same shooter at the same cell in this game
             cur.execute(
-                "SELECT 1 FROM moves WHERE game_id=%s AND player_id=%s AND row=%s AND col=%s",
+                """
+                SELECT 1
+                FROM moves
+                WHERE game_id=%s AND player_id=%s AND row=%s AND col=%s
+                """,
                 (game_id, player_id, row, col),
             )
             if cur.fetchone():
                 return err("You already fired at this cell", 409)
 
-            # Determine hit or miss: check if (row, col) is an un-hit ship of any OTHER player
-            # First find which player owns that cell (if any)
+            # Determine hit or miss
             cur.execute(
                 """
                 SELECT s.player_id
@@ -533,9 +564,12 @@ def fire(game_id):
             ship_row = cur.fetchone()
 
             if ship_row and ship_row["player_id"] != player_id:
-                # Check it hasn't already been hit (by anyone)
                 cur.execute(
-                    "SELECT 1 FROM moves WHERE game_id=%s AND row=%s AND col=%s AND result='hit'",
+                    """
+                    SELECT 1
+                    FROM moves
+                    WHERE game_id=%s AND row=%s AND col=%s AND result='hit'
+                    """,
                     (game_id, row, col),
                 )
                 already_hit = cur.fetchone()
@@ -546,46 +580,56 @@ def fire(game_id):
             # Log the move
             try:
                 cur.execute(
-                    "INSERT INTO moves (game_id, player_id, row, col, result) VALUES (%s,%s,%s,%s,%s)",
+                    """
+                    INSERT INTO moves (game_id, player_id, row, col, result)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
                     (game_id, player_id, row, col, result),
                 )
             except UniqueViolation:
                 conn.rollback()
                 return err("You already fired at this cell", 409)
 
-            # Check elimination: did we just eliminate the target player?
+            # Check elimination
             if result == "hit" and ship_row:
                 target_pid = ship_row["player_id"]
                 if is_player_eliminated(cur, game_id, target_pid):
                     cur.execute(
-                        "UPDATE game_players SET is_eliminated=TRUE WHERE game_id=%s AND player_id=%s",
+                        """
+                        UPDATE game_players
+                        SET is_eliminated=TRUE
+                        WHERE game_id=%s AND player_id=%s
+                        """,
                         (game_id, target_pid),
                     )
 
-            # Check game completion (only 1 non-eliminated player remains)
+            # Check game completion
             active_count = count_active_players(cur, game_id)
 
             if active_count <= 1:
-                # Game finished — find the winner (last standing)
                 cur.execute(
-                    "SELECT player_id FROM game_players WHERE game_id=%s AND is_eliminated=FALSE",
+                    """
+                    SELECT player_id
+                    FROM game_players
+                    WHERE game_id=%s AND is_eliminated=FALSE
+                    """,
                     (game_id,),
                 )
                 winner_row = cur.fetchone()
-                winner_id  = winner_row["player_id"] if winner_row else player_id
+                winner_id = winner_row["player_id"] if winner_row else player_id
 
                 cur.execute(
-                    "UPDATE games SET status='finished' WHERE game_id=%s", (game_id,)
+                    "UPDATE games SET status='finished' WHERE game_id=%s",
+                    (game_id,),
                 )
-                # Transactional stats update
                 update_stats_on_finish(cur, game_id, winner_id)
                 conn.commit()
 
                 return jsonify({
-                    "result":         result,
+                    "result": result,
                     "next_player_id": None,
-                    "game_status":    "finished",
-                    "winner_id":      winner_id,
+                    "game_status": "finished",
+                    "winner_id": winner_id,
                 }), 200
 
             # Advance turn
@@ -599,9 +643,9 @@ def fire(game_id):
         conn.commit()
 
     return jsonify({
-        "result":         result,
+        "result": result,
         "next_player_id": next_player_id,
-        "game_status":    "playing",
+        "game_status": "playing",
     }), 200
 
 
