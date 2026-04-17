@@ -4,11 +4,9 @@ run_instructor_tests.py
 Runs all instructor tests from pool_instructor.json against your live server.
 
 Usage:
-    python run_instructor_tests.py [--base-url URL]
+    python run_instructor_tests.py --json pool_instructor.json [--base-url URL]
 
 Default server: https://p01--backend--zm8jxh5c8bph.code.run
-
-Test Command: python run_instructor_tests.py --json pool_instructor.json
 """
 
 import json
@@ -16,6 +14,24 @@ import sys
 import time
 import argparse
 import requests
+
+# ─────────────────────────────────────────────
+# COLORS (ANSI escape codes)
+# ─────────────────────────────────────────────
+GREEN  = "\033[92m"
+RED    = "\033[91m"
+YELLOW = "\033[93m"
+CYAN   = "\033[96m"
+BOLD   = "\033[1m"
+DIM    = "\033[2m"
+RESET  = "\033[0m"
+
+def green(s):  return f"{GREEN}{s}{RESET}"
+def red(s):    return f"{RED}{s}{RESET}"
+def yellow(s): return f"{YELLOW}{s}{RESET}"
+def cyan(s):   return f"{CYAN}{s}{RESET}"
+def bold(s):   return f"{BOLD}{s}{RESET}"
+def dim(s):    return f"{DIM}{s}{RESET}"
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -76,9 +92,9 @@ def setup_game_state(base, state):
     Returns dict with player_id, game_id, player2_id as applicable.
 
     States:
-      game_created  → p1 created game (but p2 hasn't joined)
-      game_joined   → p1 + p2 joined, NO ships placed
-      game_playing  → both placed ships; game is active (p1 goes first)
+      game_created  -> p1 created game (but p2 hasn't joined)
+      game_joined   -> p1 + p2 joined, NO ships placed
+      game_playing  -> both placed ships; game is active (p1 goes first)
     """
     p1_id = create_player(base, f"p1_{int(time.time()*1000)%999999}")
     if p1_id is None:
@@ -89,10 +105,8 @@ def setup_game_state(base, state):
         return None
 
     if state == "game_created":
-        # creator already joined automatically
         return {"player_id": p1_id, "game_id": game_id, "player2_id": None}
 
-    # game_joined and game_playing both need p2
     p2_id = create_player(base, f"p2_{int(time.time()*1000)%999999}")
     if p2_id is None:
         return None
@@ -189,7 +203,6 @@ def interpolate_body(body, ctx):
             return [replace_val(i) for i in v]
         return v
 
-    # For fire/join/place bodies that reference player_id=1 → p1, player_id=2 → p2
     result = {}
     for k, v in body.items():
         if k == "player_id":
@@ -206,9 +219,7 @@ def interpolate_body(body, ctx):
 
 def run_test(base, test, ctx):
     """
-    Execute a single test.  Returns dict:
-      passed, test_id, name, actual_status, expected_status,
-      body_failures, response_body, error
+    Execute a single test. Returns result dict.
     """
     endpoint = interpolate_endpoint(test["endpoint"], ctx)
     url = base + endpoint
@@ -275,35 +286,62 @@ def run_test(base, test, ctx):
 
 
 # ─────────────────────────────────────────────
+# PRINT HELPERS
+# ─────────────────────────────────────────────
+
+def _print_result(r):
+    tid    = r["test_id"]
+    name   = r["name"][:55].ljust(55)
+    actual   = r.get("actual_status")
+    expected = r.get("expected_status")
+    status   = f"{str(actual):>3} / {str(expected):<3}"
+
+    if r["passed"]:
+        icon = green("✓")
+        line = green(f"  {icon} [{tid}] {name}  {status}")
+        print(line)
+    else:
+        icon = red("✗")
+        print(red(f"  {icon} [{tid}] {name}  {status}  <- FAIL"))
+        err = r.get("error")
+        if err:
+            print(red(f"         -> {err}"))
+        for bf in r.get("body_failures", []):
+            print(red(f"         -> body: {bf}"))
+        body = r.get("response_body")
+        if body is not None:
+            body_str = json.dumps(body) if isinstance(body, (dict, list)) else str(body)
+            if len(body_str) > 160:
+                body_str = body_str[:160] + "..."
+            print(red(f"         -> resp: {body_str}"))
+
+
+# ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Instructor test runner")
     parser.add_argument("--base-url", default=DEFAULT_BASE, help="Backend base URL")
-    parser.add_argument("--json", default="/mnt/user-data/uploads/pool_instructor.json",
+    parser.add_argument("--json", default="pool_instructor.json",
                         help="Path to instructor test JSON")
     parser.add_argument("--filter", default=None, help="Only run tests whose ID contains this string")
     args = parser.parse_args()
 
     base = args.base_url.rstrip("/")
 
-    print(f"\n{'='*70}")
-    print(f"  BATTLESHIP INSTRUCTOR TEST RUNNER")
-    print(f"  Server: {base}")
-    print(f"{'='*70}\n")
+    print(bold(f"\n{'='*70}"))
+    print(bold(f"  BATTLESHIP INSTRUCTOR TEST RUNNER"))
+    print(bold(f"  Server: {base}"))
+    print(bold(f"{'='*70}\n"))
 
-    # Load tests
     with open(args.json) as f:
         tests = json.load(f)
 
     if args.filter:
         tests = [t for t in tests if args.filter in t["test_id"]]
-        print(f"  Filtered to {len(tests)} tests matching '{args.filter}'\n")
+        print(cyan(f"  Filtered to {len(tests)} tests matching '{args.filter}'\n"))
 
-    # ── Group tests by their `requires` field ──
-    # We'll reset once, then build contexts lazily as needed
-    # Context cache keyed by state name
     ctx_cache = {}
 
     def get_ctx(state):
@@ -312,24 +350,19 @@ def main():
             ctx_cache[state] = ctx
         return ctx_cache[state]
 
-    # ── Reset server before running ──
-    print("  [SETUP] Resetting server state... ", end="", flush=True)
+    print(f"  {cyan('[SETUP]')} Resetting server state... ", end="", flush=True)
     ok = reset(base)
-    print("OK" if ok else "FAILED (continuing anyway)")
+    print(green("OK") if ok else yellow("FAILED (continuing anyway)"))
     print()
-
-    # ── Special: REF0010 (duplicate username) needs a pre-existing player ──
-    # We'll track which usernames were created so we can pre-seed as needed
 
     results = []
     passed_count = 0
     failed_count = 0
 
-    for i, test in enumerate(tests):
+    for test in tests:
         test_id = test["test_id"]
         state = test.get("requires")
 
-        # Get or build context for this state
         ctx = None
         if state:
             ctx = get_ctx(state)
@@ -350,9 +383,7 @@ def main():
                 _print_result(result)
                 continue
 
-        # Special handling: REF0010 needs duplicate_test to already exist
         if test_id == "REF0010":
-            # Pre-create the duplicate player
             create_player(base, "duplicate_test")
 
         result = run_test(base, test, ctx)
@@ -367,62 +398,45 @@ def main():
 
     # ── Summary ──
     total = len(results)
-    print(f"\n{'='*70}")
-    print(f"  RESULTS: {passed_count}/{total} passed  |  {failed_count} failed")
-    print(f"{'='*70}\n")
+    print(bold(f"\n{'='*70}"))
+
+    summary = f"  RESULTS: {passed_count}/{total} passed  |  {failed_count} failed"
+    if failed_count == 0:
+        print(green(bold(summary)))
+    elif failed_count == total:
+        print(red(bold(summary)))
+    else:
+        print(yellow(bold(summary)))
+
+    print(bold(f"{'='*70}\n"))
 
     if failed_count > 0:
-        print("  FAILED TESTS SUMMARY")
-        print(f"  {'─'*66}")
+        print(bold(red("  FAILED TESTS SUMMARY")))
+        print(red(f"  {'─'*66}"))
         for r in results:
             if not r["passed"]:
-                eid  = r['test_id']
-                name = r['name']
-                err  = r.get('error') or ""
-                got  = r.get('actual_status', '?')
-                want = r.get('expected_status', '?')
-                bfail = r.get('body_failures', [])
+                eid   = r["test_id"]
+                name  = r["name"]
+                err   = r.get("error") or ""
+                got   = r.get("actual_status", "?")
+                want  = r.get("expected_status", "?")
+                bfail = r.get("body_failures", [])
 
-                print(f"\n  ✗ [{eid}] {name}")
+                print(red(f"\n  x [{eid}] {name}"))
                 if err:
-                    print(f"      Error   : {err}")
+                    print(red(f"      Error   : {err}"))
                 else:
-                    print(f"      Status  : got {got}, want {want} {'✓' if r.get('status_ok') else '✗'}")
+                    print(red(f"      Status  : got {got}, want {want}"))
                 for bf in bfail:
-                    print(f"      Body    : {bf}")
+                    print(red(f"      Body    : {bf}"))
                 if r.get("response_body") is not None:
                     body_str = json.dumps(r["response_body"], indent=None)
                     if len(body_str) > 200:
                         body_str = body_str[:200] + "..."
-                    print(f"      Response: {body_str}")
+                    print(red(f"      Response: {body_str}"))
 
     print()
     return 0 if failed_count == 0 else 1
-
-
-def _print_result(r):
-    icon   = "✓" if r["passed"] else "✗"
-    tid    = r["test_id"]
-    name   = r["name"][:55].ljust(55)
-    actual   = r.get('actual_status')
-    expected = r.get('expected_status')
-    status   = f"{str(actual):>3} / {str(expected):<3}"
-
-    if r["passed"]:
-        print(f"  {icon} [{tid}] {name}  {status}")
-    else:
-        print(f"  {icon} [{tid}] {name}  {status}  ← FAIL")
-        err = r.get("error")
-        if err:
-            print(f"         ↳ {err}")
-        for bf in r.get("body_failures", []):
-            print(f"         ↳ body: {bf}")
-        body = r.get("response_body")
-        if body is not None:
-            body_str = json.dumps(body) if isinstance(body, (dict, list)) else str(body)
-            if len(body_str) > 160:
-                body_str = body_str[:160] + "..."
-            print(f"         ↳ resp: {body_str}")
 
 
 if __name__ == "__main__":
