@@ -163,24 +163,41 @@ export function render(mountEl) {
 
   rerender();
 
-  // Poll for opponent joins / game activation in case we're waiting for more players
+  // Polling loop: ONLY checks if the game status changed (e.g. opponent joined,
+  // opponent placed, game activated). Does NOT call rerender() — rerendering
+  // would rebuild the board DOM and disrupt ship-placement clicks.
+  //
+  // Why? Polling is purely to detect a screen transition. The ships grid is
+  // driven by user input, not server state, so it must not be redrawn on polls.
   session.startPolling(async () => {
     const { gameId } = store.get();
     if (!gameId) return;
     try {
       const client = session.getClient(store.get().serverUrl);
-      const game = await client.getGame(gameId);
-      store.set({ game });
-      if (submitted && game.status === 'active') {
+      const freshGame = await client.getGame(gameId);
+      const prevStatus = store.get().game?.status;
+      // Silently update the store so the info sidebar reflects player counts,
+      // but don't force a full rerender unless something interesting happened.
+      store.set({ game: freshGame });
+
+      if (submitted && freshGame.status === 'active') {
         session.stopPolling();
         store.set({ screen: 'game' });
-      } else if (game.status === 'finished') {
+        return;
+      }
+      if (freshGame.status === 'finished') {
         session.stopPolling();
         store.set({ screen: 'end' });
+        return;
       }
-      rerender();
+
+      // Only rerender if the player count or status actually changed — this keeps
+      // the sidebar accurate without disrupting the user's placement interactions.
+      if (prevStatus !== freshGame.status) {
+        rerender();
+      }
     } catch (err) {
-      // non-fatal
+      // non-fatal — stay on this screen
     }
   }, POLL_INTERVAL_MS);
 }

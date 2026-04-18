@@ -193,8 +193,14 @@ export function render(mountEl) {
       if (resolved != null) game.current_turn_player_id = resolved;
     }
 
+    // Capture what was visible before this poll so we can decide if a rerender
+    // is actually needed. Rerendering on every poll (even when nothing changed)
+    // tears down hover states and feels laggy during the opponent's turn.
+    const prevMoveCount = moves.length;
+    const prevStatus = store.get().game?.status;
+    const prevTurnId = store.get().game?.current_turn_player_id;
+
     // Detect newly-arrived opponent shots to flash lastOpponentShot
-    const prevCount = moves.length;
     const prevOppMoves = moves.filter(m => m.player_id !== player.player_id);
     moves = movesList;
     const newOppMoves = movesList.filter(m => m.player_id !== player.player_id);
@@ -218,7 +224,16 @@ export function render(mountEl) {
       return;
     }
 
-    rerender();
+    // Only rerender if something the user would actually see changed:
+    //  - a new move landed (affects move log + board markers)
+    //  - the turn changed (affects turn indicator + board fireability)
+    //  - the game status changed
+    const moveCountChanged = movesList.length !== prevMoveCount;
+    const turnChanged = game.current_turn_player_id !== prevTurnId;
+    const statusChanged = game.status !== prevStatus;
+    if (moveCountChanged || turnChanged || statusChanged) {
+      rerender();
+    }
   }
 
   // ---- Build ----

@@ -19,11 +19,30 @@ let currentScreen = null;
 let headerMount = null;
 let screenMount = null;
 
-function renderHeader() {
+// Track the last values of header-relevant state so we can skip rebuilding
+// the header on unrelated store changes (e.g. polling updates to `game`).
+let lastHeaderKey = null;
+
+function headerKey(state) {
+  // Anything the header reads should be in this key. If the key hasn't changed,
+  // the header's visual output wouldn't change either, so skip the rebuild.
+  return JSON.stringify({
+    screen: state.screen,
+    serverUrl: state.serverUrl,
+    playerName: state.player?.username || null,
+    playerId: state.player?.player_id || null,
+  });
+}
+
+function renderHeader(force = false) {
   if (!headerMount) return;
-  const { screen } = store.get();
+  const state = store.get();
+  const key = headerKey(state);
+  if (!force && key === lastHeaderKey) return;
+  lastHeaderKey = key;
+
   // Hide header on the connect screen — it has its own hero treatment.
-  if (screen === 'connect') {
+  if (state.screen === 'connect') {
     clear(headerMount);
     return;
   }
@@ -92,7 +111,7 @@ function boot() {
   setupRouter();
   validateInitialState();
   // Initial render (validateInitialState may not trigger a change if screen matches)
-  renderHeader();
+  renderHeader(true);
   renderScreen();
 }
 

@@ -13,8 +13,7 @@ import { Identity } from '../../components/ui/Identity.js';
 import { Loader } from '../../components/ui/Loader.js';
 import { GameRow } from '../../components/features/GameRow.js';
 import { PlayerStatsCard } from '../../components/features/PlayerStatsCard.js';
-
-const POLL_INTERVAL_MS = 2500;
+import { formatClock } from '../utils/format.js';
 
 export function render(mountEl) {
   // ---- Local UI state ----
@@ -27,6 +26,7 @@ export function render(mountEl) {
   let games = [];
   let loadingGames = true;
   let listError = '';
+  let lastRefreshedAt = null;
 
   const rerender = () => mount(mountEl, build());
 
@@ -140,6 +140,7 @@ export function render(mountEl) {
       const list = await client.listGames();
       games = list;
       listError = '';
+      lastRefreshedAt = new Date();
     } catch (err) {
       listError = err.message;
     } finally {
@@ -293,8 +294,18 @@ export function render(mountEl) {
           h('div', { class: 'lobby-section-head' },
             h('h3', {}, 'Games'),
             h('div', { class: 'row-sm' },
-              h('span', { class: 'count' }, `${games.length}`),
-              Button({ variant: 'ghost', size: 'sm', onClick: refreshGames, children: '↻ Refresh' }),
+              h('span', { class: 'count' },
+                lastRefreshedAt
+                  ? `${games.length} games · updated ${formatClock(lastRefreshedAt)}`
+                  : `${games.length} games`,
+              ),
+              Button({
+                variant: 'teal',
+                size: 'sm',
+                onClick: refreshGames,
+                disabled: loadingGames,
+                children: loadingGames ? 'Refreshing…' : '↻ Refresh',
+              }),
             ),
           ),
           buildGamesList(),
@@ -309,15 +320,15 @@ export function render(mountEl) {
     );
   }
 
-  // ---- Initial render + kickoff polling ----
+  // ---- Initial render + kickoff ----
   rerender();
 
   const { player } = store.get();
   if (player) {
     refreshGames();
     refreshStats();
-    session.startPolling(async () => {
-      await refreshGames();
-    }, POLL_INTERVAL_MS);
+    // Note: no auto-polling. The user refreshes the games list manually via the
+    // Refresh button. This avoids constant DOM rebuilds that disrupt interaction
+    // (hover states, cursor position, focus) every couple seconds.
   }
 }
