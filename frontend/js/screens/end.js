@@ -41,12 +41,19 @@ export function render(mountEl) {
       // Derive the winner if the server didn't provide one. When winner_id is
       // missing but the game is finished, the winner is whoever landed the last
       // hit (the shot that eliminated the other player's fleet).
+      console.log('[end] latestGame:', latestGame);
+      console.log('[end] movesList:', movesList);
+      console.log('[end] my player.player_id:', player.player_id);
+
       let derivedWinnerId = latestGame?.winner_id ?? null;
+      console.log('[end] initial derivedWinnerId from server:', derivedWinnerId);
+
       if (derivedWinnerId == null && latestGame?.status === 'finished' && movesList.length > 0) {
         // Find the last HIT — the player who scored it is the winner.
         for (let i = movesList.length - 1; i >= 0; i--) {
           if (movesList[i].result === 'hit') {
             derivedWinnerId = movesList[i].player_id;
+            console.log('[end] found last hit at index', i, 'by player', derivedWinnerId);
             break;
           }
         }
@@ -76,7 +83,8 @@ export function render(mountEl) {
       if (derivedWinnerId != null) {
         winnerName = playerNames.get(derivedWinnerId) || `Player ${derivedWinnerId}`;
       }
-    } catch { /* non-fatal */ }
+      console.log('[end] FINAL derivedWinnerId:', derivedWinnerId, 'winnerName:', winnerName, 'victory?', derivedWinnerId === player.player_id);
+    } catch (err) { console.error('[end] load error:', err); }
 
     loading = false;
     rerender();
