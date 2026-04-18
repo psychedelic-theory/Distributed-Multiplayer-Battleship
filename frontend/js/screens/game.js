@@ -122,9 +122,9 @@ export function render(mountEl) {
     const gameAtEntry = store.get().game;
     if (!gameId || !player || !gameAtEntry) return;
 
-    // Guard: only fire on my turn
+   // Guard: only fire on my turn (string-coerce for type-safety)
     const currentTurnPid = resolveCurrentPlayerId(gameAtEntry);
-    if (currentTurnPid !== player.player_id) {
+    if (String(currentTurnPid ?? '') !== String(player.player_id)) {
       toast.warn('Not your turn yet.');
       return;
     }
@@ -229,7 +229,7 @@ export function render(mountEl) {
     //  - the turn changed (affects turn indicator + board fireability)
     //  - the game status changed
     const moveCountChanged = movesList.length !== prevMoveCount;
-    const turnChanged = game.current_turn_player_id !== prevTurnId;
+    const turnChanged = String(game.current_turn_player_id ?? '') !== String(prevTurnId ?? '');
     const statusChanged = game.status !== prevStatus;
     if (moveCountChanged || turnChanged || statusChanged) {
       rerender();
@@ -247,8 +247,9 @@ export function render(mountEl) {
     const gridSize = game.grid_size || 8;
     const myId = player.player_id;
     const turnPlayerId = resolveCurrentPlayerId(game);
-    const isMyTurn = turnPlayerId != null && turnPlayerId === myId;
-    const turnPlayerName = turnPlayerId === myId
+    // String-coerce to survive servers returning IDs as either number or string.
+    const isMyTurn = turnPlayerId != null && String(turnPlayerId) === String(myId);
+    const turnPlayerName = isMyTurn
       ? player.username
       : (turnPlayerId != null ? nameLookup(turnPlayerId) : 'opponent');
 
