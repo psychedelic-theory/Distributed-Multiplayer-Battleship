@@ -38,9 +38,34 @@ export function render(mountEl) {
       moves = movesList;
       store.set({ myStats: stats, game: latestGame });
 
+      // Derive the winner if the server didn't provide one. When winner_id is
+      // missing but the game is finished, the winner is whoever landed the last
+      // hit (the shot that eliminated the other player's fleet).
+      let derivedWinnerId = latestGame?.winner_id ?? null;
+      if (derivedWinnerId == null && latestGame?.status === 'finished' && movesList.length > 0) {
+        // Find the last HIT — the player who scored it is the winner.
+        for (let i = movesList.length - 1; i >= 0; i--) {
+          if (movesList[i].result === 'hit') {
+            derivedWinnerId = movesList[i].player_id;
+            break;
+          }
+        }
+        // Fallback to the very last move's player (should be rare — only if
+        // the final move was somehow a miss that ended the game).
+        if (derivedWinnerId == null) {
+          derivedWinnerId = movesList[movesList.length - 1].player_id;
+        }
+      }
+
+      // Stash the resolved winner back onto the store's game object so the
+      // build() function reads it the same way regardless of source.
+      if (derivedWinnerId != null && latestGame) {
+        store.set({ game: { ...latestGame, winner_id: derivedWinnerId } });
+      }
+
       // Resolve names for anyone in moves + the winner
       const ids = new Set(movesList.map(m => m.player_id));
-      if (latestGame?.winner_id) ids.add(latestGame.winner_id);
+      if (derivedWinnerId != null) ids.add(derivedWinnerId);
       const results = await Promise.all([...ids].map(async id => {
         if (id === player.player_id) return [id, player.username];
         try { const p = await client.getPlayer(id); return [id, p.username || `Player ${id}`]; }
@@ -48,8 +73,8 @@ export function render(mountEl) {
       }));
       for (const [id, name] of results) playerNames.set(id, name);
 
-      if (latestGame?.winner_id) {
-        winnerName = playerNames.get(latestGame.winner_id) || `Player ${latestGame.winner_id}`;
+      if (derivedWinnerId != null) {
+        winnerName = playerNames.get(derivedWinnerId) || `Player ${derivedWinnerId}`;
       }
     } catch { /* non-fatal */ }
 
