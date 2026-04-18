@@ -5,8 +5,11 @@
 import { ApiClient } from '../api/client.js';
 
 let client = null;
-let pollTimer = null;
-let pollAbort = false;
+// Each polling loop has its own state object. `activeLoop` points to the
+// currently-running loop (if any). Stragglers from a previous loop check
+// their OWN state.aborted flag, so they can't accidentally kill a new loop
+// that was started while they were in flight.
+let activeLoop = null;
 
 export const session = {
   /** Get or create the ApiClient for a given base URL. */
@@ -28,24 +31,32 @@ export const session = {
    */
   startPolling(fn, intervalMs) {
     this.stopPolling();
-    pollAbort = false;
+
+    // Each loop owns its own state. Even if an old loop's async tick races
+    // with this startPolling call, it checks its own `aborted` flag, not a
+    // shared one — so it can't kill this new loop.
+    const myLoop = { aborted: false, timer: null };
+    activeLoop = myLoop;
 
     const tick = async () => {
-      if (pollAbort) return;
+      if (myLoop.aborted) return;
       try { await fn(); }
       catch (err) { console.warn('[session] poll error:', err); }
-      if (pollAbort) return;
-      pollTimer = setTimeout(tick, intervalMs);
+      if (myLoop.aborted) return;
+      myLoop.timer = setTimeout(tick, intervalMs);
     };
     // Fire once immediately, then on interval.
     tick();
   },
 
   stopPolling() {
-    pollAbort = true;
-    if (pollTimer) {
-      clearTimeout(pollTimer);
-      pollTimer = null;
+    if (activeLoop) {
+      activeLoop.aborted = true;
+      if (activeLoop.timer) {
+        clearTimeout(activeLoop.timer);
+        activeLoop.timer = null;
+      }
+      activeLoop = null;
     }
   },
 };
