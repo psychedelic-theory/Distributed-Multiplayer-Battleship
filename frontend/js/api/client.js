@@ -24,12 +24,24 @@ function pick(obj, ...keys) {
   return undefined;
 }
 
+function normalizeStatus(status) {
+  if (!status) return status;
+  const s = String(status).toLowerCase();
+  if (s === 'playing' || s === 'in_progress' || s === 'started' || s === 'ongoing') {
+    return 'active';
+  }
+  if (s === 'done' || s === 'completed' || s === 'ended') {
+    return 'finished';
+  }
+  return s;
+}
+
 function normalizeGame(g) {
   if (!g || typeof g !== 'object') return g;
   return {
     game_id:         pick(g, 'game_id', 'gameId', 'id'),
     grid_size:       pick(g, 'grid_size', 'gridSize'),
-    status:          pick(g, 'status', 'state'),
+    status:          normalizeStatus(pick(g, 'status', 'state')),
     current_turn_index: pick(g, 'current_turn_index', 'currentTurnIndex'),
     current_turn_player_id: pick(g, 'current_turn_player_id', 'currentTurnPlayerId', 'current_player_id', 'currentPlayerId'),
     active_players:  pick(g, 'active_players', 'activePlayers', 'player_count', 'playerCount'),
@@ -81,7 +93,7 @@ function normalizeFireResult(r) {
   return {
     result:         pick(r, 'result', 'outcome'),
     next_player_id: pick(r, 'next_player_id', 'nextPlayerId'),
-    game_status:    pick(r, 'game_status', 'gameStatus', 'status'),
+    game_status:    normalizeStatus(pick(r, 'game_status', 'gameStatus', 'status')),
     winner_id:      pick(r, 'winner_id', 'winnerId'),
     _raw: r,
   };
