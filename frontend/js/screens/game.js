@@ -177,6 +177,7 @@ export function render(mountEl) {
 
   // ---- Polling loop ----
   async function pollOnce() {
+    console.log('[poll] tick', new Date().toLocaleTimeString());
     const { gameId, player } = store.get();
     if (!gameId || !player) return;
     const client = session.getClient(store.get().serverUrl);
