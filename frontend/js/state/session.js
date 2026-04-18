@@ -30,6 +30,7 @@ export const session = {
    * Automatically stops any existing loop.
    */
   startPolling(fn, intervalMs) {
+    console.log('[session] startPolling', new Error().stack.split('\n').slice(1, 4).join(' <- '));
     this.stopPolling();
 
     // Each loop owns its own state. Even if an old loop's async tick races
@@ -51,6 +52,7 @@ export const session = {
 
   stopPolling() {
     if (activeLoop) {
+      console.log('[session] stopPolling', new Error().stack.split('\n').slice(1, 4).join(' <- '));
       activeLoop.aborted = true;
       if (activeLoop.timer) {
         clearTimeout(activeLoop.timer);
