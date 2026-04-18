@@ -1,0 +1,430 @@
+/* ============================================================
+   BOARD — grid, cells, pegs (hit/miss/sunk)
+   This is the signature visual of the product.
+   ============================================================ */
+
+.board {
+  --cell-size: clamp(28px, 5vw, 44px);
+  --cell-gap: 3px;
+
+  position: relative;
+  padding: var(--sp-4);
+  background: linear-gradient(
+    160deg,
+    rgba(11, 45, 91, 0.6) 0%,
+    rgba(18, 62, 122, 0.45) 100%
+  );
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at top left, rgba(185, 217, 242, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(30, 111, 168, 0.15) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.board__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  position: relative;
+  z-index: 1;
+}
+
+.board__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.board__owner {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-hi);
+}
+
+.board__role {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+}
+
+.board__frame {
+  position: relative;
+  z-index: 1;
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  background: rgba(5, 14, 28, 0.35);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(185, 217, 242, 0.08);
+}
+
+/* ---- Axis labels + grid ---- */
+.board__grid-wrap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 4px;
+}
+
+.board__corner { }
+
+.board__axis-x {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-size, 10), var(--cell-size));
+  gap: var(--cell-gap);
+  padding-left: calc(var(--cell-size) * 0 + var(--cell-gap) * 0);
+}
+
+.board__axis-y {
+  display: grid;
+  grid-template-rows: repeat(var(--grid-size, 10), var(--cell-size));
+  gap: var(--cell-gap);
+}
+
+.board__axis-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-lo);
+  display: grid;
+  place-items: center;
+  letter-spacing: 0.05em;
+}
+
+.board__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-size, 10), var(--cell-size));
+  grid-template-rows: repeat(var(--grid-size, 10), var(--cell-size));
+  gap: var(--cell-gap);
+  position: relative;
+}
+
+/* ---- Cell base ---- */
+.cell {
+  position: relative;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius: var(--r-xs);
+  background: linear-gradient(
+    145deg,
+    rgba(185, 217, 242, 0.08) 0%,
+    rgba(30, 111, 168, 0.12) 100%
+  );
+  border: 1px solid rgba(185, 217, 242, 0.08);
+  cursor: default;
+  transition:
+    background var(--dur-fast),
+    transform var(--dur-fast),
+    border-color var(--dur-fast);
+  display: grid;
+  place-items: center;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Interactive cells on opponent board (can fire) */
+.cell--fireable {
+  cursor: crosshair;
+}
+
+.cell--fireable:hover:not(.cell--fired) {
+  background: linear-gradient(
+    145deg,
+    rgba(185, 217, 242, 0.25) 0%,
+    rgba(30, 111, 168, 0.3) 100%
+  );
+  border-color: var(--c-sky-200);
+  transform: scale(1.08);
+  z-index: 2;
+  box-shadow: 0 0 12px rgba(185, 217, 242, 0.35);
+}
+
+.cell--disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Own ship cell (friendly) */
+.cell--ship {
+  background: linear-gradient(145deg, #3A444F 0%, #6E7B85 100%);
+  border-color: var(--c-gray-300);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -2px 4px rgba(0,0,0,0.3);
+}
+
+.cell--ship::after {
+  content: "";
+  position: absolute;
+  inset: 20%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #9AA4AD 0%, #6E7B85 100%);
+}
+
+/* Ship being hit (enemy-fired ship cell) */
+.cell--ship-hit {
+  background: linear-gradient(145deg, #5A2020 0%, #8B1A1A 100%);
+  border-color: var(--c-hit);
+}
+
+/* Cell fired by ME that was a HIT on opponent */
+.cell--hit {
+  background: radial-gradient(circle at center, #D62828 0%, #7A1616 100%);
+  border-color: var(--c-hit);
+  box-shadow:
+    0 0 12px var(--c-hit-glow),
+    inset 0 0 8px rgba(0, 0, 0, 0.4);
+  animation: hit-pulse 0.6s var(--ease-out-quart);
+}
+
+.cell--hit::after {
+  content: "";
+  position: absolute;
+  width: 55%;
+  height: 55%;
+  background: radial-gradient(circle, #F4F6F8 0%, #D62828 40%, transparent 70%);
+  border-radius: 50%;
+  animation: hit-flash 0.4s var(--ease-out-quart);
+}
+
+/* Cell fired that was a MISS */
+.cell--miss {
+  background: rgba(244, 246, 248, 0.08);
+  border-color: rgba(244, 246, 248, 0.2);
+}
+
+.cell--miss::after {
+  content: "";
+  position: absolute;
+  width: 40%;
+  height: 40%;
+  background: var(--c-miss);
+  border-radius: 50%;
+  opacity: 0.8;
+  box-shadow:
+    inset 0 1px 2px rgba(0,0,0,0.25),
+    0 0 4px rgba(244, 246, 248, 0.4);
+  animation: miss-drop 0.3s var(--ease-out-quart);
+}
+
+/* Cell fired (generic marker for already-shot) */
+.cell--fired { cursor: not-allowed; }
+
+/* Last shot highlight */
+.cell--last {
+  outline: 2px solid var(--c-sky-200);
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+/* Placement mode — hovering preview */
+.cell--placement {
+  cursor: pointer;
+}
+
+.cell--placement:hover {
+  background: linear-gradient(145deg, rgba(74, 140, 201, 0.4), rgba(30, 111, 168, 0.5));
+  border-color: var(--c-sky-200);
+  transform: scale(1.08);
+  z-index: 2;
+}
+
+.cell--placed {
+  background: linear-gradient(145deg, #6E7B85 0%, #3A444F 100%);
+  border-color: var(--c-gray-300);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.cell--placed::after {
+  content: "";
+  position: absolute;
+  inset: 25%;
+  border-radius: 2px;
+  background: var(--c-gray-200);
+}
+
+/* ---- Turn indicator ribbon ---- */
+.turn-indicator {
+  position: relative;
+  padding: var(--sp-4) var(--sp-5);
+  background: linear-gradient(
+    90deg,
+    rgba(30, 111, 168, 0.2) 0%,
+    rgba(30, 111, 168, 0.08) 50%,
+    rgba(30, 111, 168, 0.2) 100%
+  );
+  border: 1px solid rgba(30, 111, 168, 0.35);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  overflow: hidden;
+}
+
+.turn-indicator::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(185, 217, 242, 0.15),
+    transparent
+  );
+  animation: shimmer 3s linear infinite;
+}
+
+.turn-indicator--your-turn {
+  background: linear-gradient(
+    90deg,
+    rgba(47, 181, 124, 0.15) 0%,
+    rgba(47, 181, 124, 0.05) 50%,
+    rgba(47, 181, 124, 0.15) 100%
+  );
+  border-color: rgba(47, 181, 124, 0.5);
+  box-shadow: 0 0 24px rgba(47, 181, 124, 0.2);
+}
+
+.turn-indicator__text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.turn-indicator__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+}
+
+.turn-indicator__who {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-hi);
+}
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ---- Hit / miss animations ---- */
+@keyframes hit-pulse {
+  0%   { transform: scale(0.8); box-shadow: 0 0 0 rgba(214, 40, 40, 0); }
+  50%  { transform: scale(1.15); box-shadow: 0 0 30px var(--c-hit-glow); }
+  100% { transform: scale(1);   box-shadow: 0 0 12px var(--c-hit-glow); }
+}
+
+@keyframes hit-flash {
+  0%, 100% { opacity: 0; transform: scale(0.3); }
+  50%      { opacity: 1; transform: scale(1); }
+}
+
+@keyframes miss-drop {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 0.8; transform: scale(1); }
+}
+
+/* ---- Ship placement meter ---- */
+.placement-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+}
+
+.placement-progress__dots {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.placement-progress__dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--glass-border-strong);
+  background: transparent;
+  transition: all var(--dur-med);
+}
+
+.placement-progress__dot--filled {
+  background: linear-gradient(145deg, #9AA4AD, #3A444F);
+  border-color: var(--c-gray-200);
+  box-shadow: 0 0 8px rgba(154, 164, 173, 0.4);
+}
+
+/* ---- Winner banner ---- */
+.winner-banner {
+  text-align: center;
+  padding: var(--sp-7);
+  border-radius: var(--r-xl);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 111, 168, 0.2) 0%,
+    rgba(11, 45, 91, 0.1) 100%
+  );
+  border: 1px solid var(--glass-border-strong);
+  position: relative;
+  overflow: hidden;
+}
+
+.winner-banner--you {
+  background: linear-gradient(
+    180deg,
+    rgba(47, 181, 124, 0.2) 0%,
+    rgba(11, 45, 91, 0.1) 100%
+  );
+  border-color: rgba(47, 181, 124, 0.5);
+  box-shadow: 0 0 60px rgba(47, 181, 124, 0.2);
+}
+
+.winner-banner--lose {
+  background: linear-gradient(
+    180deg,
+    rgba(214, 40, 40, 0.15) 0%,
+    rgba(11, 45, 91, 0.1) 100%
+  );
+  border-color: rgba(214, 40, 40, 0.4);
+}
+
+.winner-banner__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+  margin-bottom: var(--sp-3);
+}
+
+.winner-banner__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-bottom: var(--sp-2);
+}
+
+.winner-banner__subtitle {
+  color: var(--text-mid);
+  font-size: var(--fs-md);
+}
