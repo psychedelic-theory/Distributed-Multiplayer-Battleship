@@ -1,176 +1,98 @@
-/* ============================================================
-   BASE — reset, typography, atmospheric background
-   ============================================================ */
+/* ==========================================================================
+   Base — reset + atmospheric background
+   ========================================================================== */
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body {
-  height: 100%;
-}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
 
 body {
+  min-height: 100vh;
   font-family: var(--font-body);
   font-size: var(--fs-base);
-  line-height: 1.55;
-  color: var(--text-hi);
-  background: var(--c-navy-950);
+  line-height: var(--lh-normal);
+  color: var(--color-text);
+  background: var(--color-bg);
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(56,199,192,0.08), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(230,51,61,0.10), transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(240,179,42,0.05), transparent 60%);
+  background-attachment: fixed;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100dvh;
-  position: relative;
 }
 
-/* Atmospheric gradient base */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 20% -10%, rgba(30, 111, 168, 0.35) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 100%, rgba(11, 45, 91, 0.6) 0%, transparent 60%),
-    linear-gradient(180deg, #050E1C 0%, #07162B 50%, #050E1C 100%);
-  z-index: -3;
-  pointer-events: none;
-}
-
-/* ---- Decorative background layers ---- */
-.bg-layers {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.bg-grid {
-  position: absolute;
-  inset: 0;
   background-image:
-    linear-gradient(rgba(185, 217, 242, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(185, 217, 242, 0.04) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 40%, black 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(circle at 50% 40%, black 20%, transparent 75%);
+  pointer-events: none;
+  z-index: 0;
 }
 
-.bg-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.5;
-  will-change: transform;
+body::after {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  background: radial-gradient(ellipse at center, rgba(126,138,194,0.06) 0%, transparent 60%);
+  pointer-events: none;
+  filter: blur(40px);
+  z-index: 0;
 }
 
-.bg-glow--one {
-  width: 600px;
-  height: 600px;
-  top: -120px;
-  left: -160px;
-  background: radial-gradient(circle, #1E6FA8 0%, transparent 70%);
-  animation: drift-a 28s ease-in-out infinite;
-}
+#app { position: relative; z-index: 1; }
 
-.bg-glow--two {
-  width: 720px;
-  height: 720px;
-  bottom: -220px;
-  right: -220px;
-  background: radial-gradient(circle, #123E7A 0%, transparent 70%);
-  animation: drift-b 34s ease-in-out infinite;
-}
-
-.bg-noise {
-  position: absolute;
-  inset: 0;
-  opacity: 0.025;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='0.8'/></svg>");
-  mix-blend-mode: overlay;
-}
-
-@keyframes drift-a {
-  0%, 100% { transform: translate(0, 0); }
-  50%      { transform: translate(80px, 60px); }
-}
-@keyframes drift-b {
-  0%, 100% { transform: translate(0, 0); }
-  50%      { transform: translate(-60px, -40px); }
-}
-
-/* ---- Typography primitives ---- */
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  color: var(--text-hi);
-}
-
-.display {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(2.5rem, 6vw, var(--fs-display));
-  letter-spacing: -0.04em;
-  line-height: 0.95;
-}
-
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--text-lo);
   font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: var(--lh-tight);
+  margin: 0;
 }
+h1 { font-size: var(--fs-3xl); }
+h2 { font-size: var(--fs-2xl); }
+h3 { font-size: var(--fs-xl); }
+h4 { font-size: var(--fs-lg); }
 
-.mono { font-family: var(--font-mono); }
-
-p { color: var(--text-mid); }
+p { margin: 0 0 var(--sp-3) 0; color: var(--color-text-dim); }
 
 a {
-  color: var(--c-sky-200);
+  color: var(--brand-teal-hi);
   text-decoration: none;
-  transition: color var(--dur-fast);
+  transition: color var(--dur-fast) var(--ease-out);
 }
-a:hover { color: var(--c-white); }
+a:hover { color: var(--brand-teal); }
 
-/* ---- Focus ring (universal, accessible) ---- */
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; }
 :focus-visible {
-  outline: 2px solid var(--c-sky-200);
-  outline-offset: 3px;
-  border-radius: var(--r-xs);
+  outline: 2px solid var(--brand-teal-hi);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
 }
 
-/* ---- Scrollbar ---- */
+::selection { background: rgba(56,199,192,0.35); color: var(--navy-050); }
+
+/* Scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(185, 217, 242, 0.15);
-  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: var(--r-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(185, 217, 242, 0.3);
-}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); background-clip: padding-box; }
 
-/* ---- Selection ---- */
-::selection {
-  background: var(--c-navy-600);
-  color: var(--c-white);
-}
-
-/* ---- Utility ---- */
 .sr-only {
-  position: absolute !important;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0);
-  white-space: nowrap; border: 0;
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
-
-.hidden { display: none !important; }

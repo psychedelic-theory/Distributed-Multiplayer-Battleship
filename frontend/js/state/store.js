@@ -1,109 +1,97 @@
-/**
- * store.js — Tiny reactive state container.
- *
- * Usage:
- *   store.set({ serverUrl: '...' });
- *   store.subscribe(state => { ... });
- *   store.get(); // current snapshot
- */
+// ==========================================================================
+// Store — reactive global state
+// ==========================================================================
 
 import { storage } from '../utils/storage.js';
 
-const PERSISTED_KEYS = ['serverUrl', 'player', 'recentServers'];
+const PERSIST_KEYS = ['serverUrl', 'player', 'recentServers'];
 
-function buildInitialState() {
-  return {
-    // Server connection
-    serverUrl: storage.get('serverUrl', ''),
-    serverConnected: false,
+const initialState = {
+  // Navigation
+  screen: 'connect',          // connect | lobby | placement | game | end
 
-    // Recent servers history (for quick switching)
-    recentServers: storage.get('recentServers', []),
+  // Connection
+  serverUrl: null,
+  serverConnected: false,
+  recentServers: [],
 
-    // Current player identity (per server — we store last used)
-    player: storage.get('player', null),
+  // Identity
+  player: null,               // { player_id, username }
 
-    // Current screen (lobby, placement, game, end)
-    screen: 'connect',     // 'connect' | 'lobby' | 'placement' | 'game' | 'end'
+  // Game session
+  gameId: null,
+  game: null,                 // normalized game object
+  myShips: [],                // [{row,col}] persisted per-game in memory
+  moves: [],                  // full move history for current game
+  opponentMoves: [],          // moves by opponents only
+  myMoves: [],                // moves by me only
+  lastEvent: null,            // { type, ... } for transient UI feedback
 
-    // Current game state
-    currentGame: null,     // normalized game object
-    myShips: [],           // placed ships for the current game (client-local)
-    moves: [],             // full move history (populated during game)
-    opponentProfiles: {},  // playerId -> { player_id, username }
+  // Derived stats (session-local)
+  myStats: null,
+};
 
-    // Last shot we fired (for highlight)
-    lastShot: null,        // { row, col, result }
-
-    // Game end info
-    winnerId: null,
-    loading: false,
-  };
+function loadPersisted() {
+  const patch = {};
+  for (const k of PERSIST_KEYS) {
+    const v = storage.get(k, undefined);
+    if (v !== undefined) patch[k] = v;
+  }
+  // Sensible defaults
+  if (!patch.recentServers) patch.recentServers = [];
+  return patch;
 }
 
-class Store {
-  constructor() {
-    this.state = buildInitialState();
-    this.listeners = new Set();
+function savePersisted(state) {
+  for (const k of PERSIST_KEYS) {
+    if (state[k] !== undefined) storage.set(k, state[k]);
   }
+}
 
-  get() { return this.state; }
+function createStore() {
+  let state = { ...initialState, ...loadPersisted() };
+  // If we loaded a serverUrl from storage, mark connection as not-yet-probed.
+  state.serverConnected = false;
 
-  set(patch) {
-    this.state = { ...this.state, ...patch };
-    // Persist a whitelist of keys
-    for (const k of PERSISTED_KEYS) {
-      if (k in patch) storage.set(k, this.state[k]);
-    }
-    this._emit();
-  }
+  const listeners = new Set();
 
-  /**
-   * Subscribe to changes. Returns an unsubscribe function.
-   */
-  subscribe(fn) {
-    this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
-  }
+  function get() { return state; }
 
-  _emit() {
-    for (const fn of this.listeners) fn(this.state);
-  }
-
-  /**
-   * Full reset — used when disconnecting from a server.
-   */
-  resetAll() {
-    storage.remove('player');
-    storage.remove('serverUrl');
-    this.state = buildInitialState();
-    this.state.serverUrl = '';
-    this.state.player = null;
-    this._emit();
-  }
-
-  /**
-   * Game-specific reset — used when leaving a game (back to lobby).
-   */
-  resetGame() {
-    this.set({
-      currentGame: null,
-      myShips: [],
-      moves: [],
-      opponentProfiles: {},
-      lastShot: null,
-      winnerId: null,
+  function set(patch) {
+    const next = typeof patch === 'function' ? patch(state) : patch;
+    state = { ...state, ...next };
+    savePersisted(state);
+    listeners.forEach(fn => {
+      try { fn(state); } catch (e) { console.error('[store] listener error:', e); }
     });
   }
 
-  /**
-   * Track a server URL in the recent list.
-   */
-  addRecentServer(url) {
-    const list = this.state.recentServers || [];
-    const next = [url, ...list.filter(u => u !== url)].slice(0, 6);
-    this.set({ recentServers: next });
+  function subscribe(fn) {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
   }
+
+  function resetGame() {
+    set({
+      gameId: null,
+      game: null,
+      myShips: [],
+      moves: [],
+      opponentMoves: [],
+      myMoves: [],
+      lastEvent: null,
+    });
+  }
+
+  function addRecentServer(url) {
+    if (!url) return;
+    const current = state.recentServers || [];
+    const filtered = current.filter(u => u !== url);
+    const updated = [url, ...filtered].slice(0, 6);
+    set({ recentServers: updated });
+  }
+
+  return { get, set, subscribe, resetGame, addRecentServer };
 }
 
-export const store = new Store();
+export const store = createStore();

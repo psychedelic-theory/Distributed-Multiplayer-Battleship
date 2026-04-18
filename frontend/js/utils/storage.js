@@ -1,6 +1,6 @@
-/**
- * storage.js — Wrapped localStorage. Safe-failing.
- */
+// ==========================================================================
+// Storage — namespaced localStorage wrapper
+// ==========================================================================
 
 const NS = 'battleship.v1';
 
@@ -21,11 +21,23 @@ export const storage = {
     try {
       localStorage.setItem(key(k), JSON.stringify(value));
     } catch {
-      /* ignore quota errors */
+      // Silently ignore — quota or privacy mode
     }
   },
 
   remove(k) {
-    try { localStorage.removeItem(key(k)); } catch {}
+    try { localStorage.removeItem(key(k)); }
+    catch { /* ignore */ }
+  },
+
+  clear() {
+    try {
+      const toRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(NS + '.')) toRemove.push(k);
+      }
+      toRemove.forEach(k => localStorage.removeItem(k));
+    } catch { /* ignore */ }
   },
 };

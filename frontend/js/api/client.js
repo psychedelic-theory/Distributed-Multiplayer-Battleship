@@ -1,195 +1,178 @@
-/**
- * client.js — Universal Battleship API client.
- *
- * Tolerates minor response-shape variation across different teams' servers
- * as long as they honor the Phase 1 protocol:
- *
- *   POST   /api/players          { username }              -> { player_id }
- *   GET    /api/players          -> { players: [...] }     (lobby convenience; may be absent)
- *   GET    /api/players/:id      -> { player_id, username }
- *   GET    /api/players/:id/stats
- *   POST   /api/games            { creator_id, grid_size, max_players } -> { game_id }
- *   GET    /api/games            -> { games: [...] }       (lobby convenience; may be absent)
- *   GET    /api/games/:id
- *   POST   /api/games/:id/join   { player_id }
- *   POST   /api/games/:id/place  { player_id, ships: [{row,col}x3] }
- *   POST   /api/games/:id/fire   { player_id, row, col }
- *   GET    /api/games/:id/moves
- *
- * Philosophy: parse loosely, normalize into predictable shapes for UI code.
- */
+// ==========================================================================
+// ApiClient — universal, tolerant of snake_case and camelCase response shapes
+// ==========================================================================
 
 export class ApiError extends Error {
-  constructor(message, status, payload) {
+  constructor(message, { status = 0, body = null, endpoint = '' } = {}) {
     super(message);
-    this.status  = status;
-    this.payload = payload;
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+    this.endpoint = endpoint;
   }
 }
 
+/**
+ * Normalize keys — read either snake or camel, always return snake_case
+ * (we expose snake_case to the rest of the app so there's one shape to code against).
+ */
+function pick(obj, ...keys) {
+  if (!obj || typeof obj !== 'object') return undefined;
+  for (const k of keys) {
+    if (obj[k] !== undefined) return obj[k];
+  }
+  return undefined;
+}
+
+function normalizeGame(g) {
+  if (!g || typeof g !== 'object') return g;
+  return {
+    game_id:         pick(g, 'game_id', 'gameId', 'id'),
+    grid_size:       pick(g, 'grid_size', 'gridSize'),
+    status:          pick(g, 'status', 'state'),
+    current_turn_index: pick(g, 'current_turn_index', 'currentTurnIndex'),
+    current_turn_player_id: pick(g, 'current_turn_player_id', 'currentTurnPlayerId', 'current_player_id', 'currentPlayerId'),
+    active_players:  pick(g, 'active_players', 'activePlayers', 'player_count', 'playerCount'),
+    max_players:     pick(g, 'max_players', 'maxPlayers'),
+    creator_id:      pick(g, 'creator_id', 'creatorId'),
+    winner_id:       pick(g, 'winner_id', 'winnerId'),
+    players:         pick(g, 'players'),
+    created_at:      pick(g, 'created_at', 'createdAt'),
+    _raw: g,
+  };
+}
+
+function normalizePlayer(p) {
+  if (!p || typeof p !== 'object') return p;
+  return {
+    player_id: pick(p, 'player_id', 'playerId', 'id'),
+    username:  pick(p, 'username', 'name'),
+    _raw: p,
+  };
+}
+
+function normalizeStats(s) {
+  if (!s || typeof s !== 'object') return s;
+  return {
+    games_played: pick(s, 'games_played', 'gamesPlayed') ?? 0,
+    wins:         pick(s, 'wins') ?? 0,
+    losses:       pick(s, 'losses') ?? 0,
+    total_shots:  pick(s, 'total_shots', 'totalShots') ?? 0,
+    total_hits:   pick(s, 'total_hits', 'totalHits') ?? 0,
+    accuracy:     pick(s, 'accuracy') ?? 0,
+    _raw: s,
+  };
+}
+
+function normalizeMove(m) {
+  if (!m || typeof m !== 'object') return m;
+  return {
+    player_id: pick(m, 'player_id', 'playerId'),
+    row:       pick(m, 'row', 'r'),
+    col:       pick(m, 'col', 'c', 'column'),
+    result:    pick(m, 'result', 'outcome'),
+    timestamp: pick(m, 'timestamp', 'time', 'created_at', 'createdAt'),
+    _raw: m,
+  };
+}
+
+function normalizeFireResult(r) {
+  if (!r || typeof r !== 'object') return r;
+  return {
+    result:         pick(r, 'result', 'outcome'),
+    next_player_id: pick(r, 'next_player_id', 'nextPlayerId'),
+    game_status:    pick(r, 'game_status', 'gameStatus', 'status'),
+    winner_id:      pick(r, 'winner_id', 'winnerId'),
+    _raw: r,
+  };
+}
+
+// --------------------------------------------------------------------------
+
 export class ApiClient {
-  /**
-   * @param {string} baseUrl — origin only, no trailing slash.
-   */
   constructor(baseUrl) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
   }
 
-  // ------------------------------------------------------------------
-  // Transport
-  // ------------------------------------------------------------------
-
-  async _fetch(path, { method = 'GET', body, signal } = {}) {
-    const url = `${this.baseUrl}${path}`;
-    const opts = {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      signal,
+  async _fetch(path, options = {}) {
+    const url = this.baseUrl + path;
+    const init = {
+      method: options.method || 'GET',
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     };
-    if (body !== undefined) opts.body = JSON.stringify(body);
+    if (options.body !== undefined) init.body = JSON.stringify(options.body);
 
-    let response;
+    let res;
     try {
-      response = await fetch(url, opts);
+      res = await fetch(url, init);
     } catch (err) {
-      // Network-level failure (CORS, unreachable host, offline)
-      throw new ApiError(
-        `Cannot reach server (${err.message || 'network error'})`,
-        0,
-        null
-      );
+      throw new ApiError(`Network error: ${err.message}`, { endpoint: path });
     }
 
-    let payload = null;
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      try { payload = await response.json(); } catch { payload = null; }
-    } else {
-      try { payload = await response.text(); } catch { payload = null; }
+    let body = null;
+    const text = await res.text();
+    if (text) {
+      try { body = JSON.parse(text); }
+      catch { body = { raw: text }; }
     }
 
-    if (!response.ok) {
-      const message = (payload && typeof payload === 'object' && payload.error)
-        ? payload.error
-        : `Request failed (${response.status})`;
-      throw new ApiError(message, response.status, payload);
+    if (!res.ok) {
+      const msg = (body && (body.error || body.message)) || `HTTP ${res.status}`;
+      throw new ApiError(msg, { status: res.status, body, endpoint: path });
     }
-
-    return payload;
+    return body;
   }
 
-  // ------------------------------------------------------------------
-  // Health / server probe
-  // ------------------------------------------------------------------
-
-  /**
-   * Used by the "connect to server" flow. We attempt GET /api/health first,
-   * and fall back to GET /api/games — a GET any server implementing the
-   * protocol must respond to (even with an empty collection).
-   *
-   * Returns { ok: boolean, detail: string }
-   */
+  /** Quick health/probe — tries /api/games (a GET) or falls back. */
   async probe() {
-    // Try /api/health first
+    // Simplest reliable probe: attempt a non-destructive GET. If the server exposes
+    // /api/games listing, great; otherwise the 404/405 response still tells us it's alive.
     try {
-      const res = await this._fetch('/api/health');
-      if (res && (res.status === 'ok' || res.status === undefined)) {
-        return { ok: true, detail: 'server alive (health)' };
-      }
-      return { ok: true, detail: 'server responded' };
+      const res = await fetch(this.baseUrl + '/api/games', { method: 'GET' });
+      // Any response (even 404) means the server is reachable. Network error will throw above.
+      return { ok: true, status: res.status };
     } catch (err) {
-      if (err.status === 404) {
-        // Server may not expose /health — try /api/games as a spec-required endpoint
-        try {
-          await this._fetch('/api/games');
-          return { ok: true, detail: 'server alive (games endpoint)' };
-        } catch (err2) {
-          throw err2;
-        }
-      }
-      throw err;
+      throw new ApiError(`Cannot reach ${this.baseUrl}: ${err.message}`, { endpoint: '/api/games' });
     }
   }
 
-  // ------------------------------------------------------------------
-  // Players
-  // ------------------------------------------------------------------
+  // ---------- Players ----------
 
   async createPlayer(username) {
-    const res = await this._fetch('/api/players', {
-      method: 'POST',
-      body: { username },
-    });
-    return this._normalizePlayer(res);
+    const body = await this._fetch('/api/players', { method: 'POST', body: { username } });
+    return { player_id: pick(body, 'player_id', 'playerId', 'id'), _raw: body };
   }
 
   async getPlayer(playerId) {
-    const res = await this._fetch(`/api/players/${playerId}`);
-    return this._normalizePlayer(res);
+    const body = await this._fetch(`/api/players/${playerId}`);
+    return normalizePlayer(body);
   }
 
   async getPlayerStats(playerId) {
-    const res = await this._fetch(`/api/players/${playerId}/stats`);
-    return {
-      games_played: res.games_played ?? res.gamesPlayed ?? 0,
-      wins:         res.wins ?? 0,
-      losses:       res.losses ?? 0,
-      total_shots:  res.total_shots ?? res.totalShots ?? 0,
-      total_hits:   res.total_hits  ?? res.totalHits  ?? 0,
-      accuracy:     res.accuracy ?? 0,
-    };
+    const body = await this._fetch(`/api/players/${playerId}/stats`);
+    return normalizeStats(body);
   }
 
-  /**
-   * Optional endpoint (not strictly required by the spec, but most
-   * classmates' servers expose it). If missing, returns empty array.
-   */
-  async listPlayers() {
-    try {
-      const res = await this._fetch('/api/players');
-      const list = Array.isArray(res) ? res : (res.players ?? []);
-      return list.map(p => this._normalizePlayer(p));
-    } catch (err) {
-      if (err.status === 404 || err.status === 405) return [];
-      throw err;
-    }
-  }
-
-  // ------------------------------------------------------------------
-  // Games
-  // ------------------------------------------------------------------
-
-  async createGame({ creatorId, gridSize, maxPlayers }) {
-    const res = await this._fetch('/api/games', {
-      method: 'POST',
-      body: {
-        creator_id: creatorId,
-        grid_size: gridSize,
-        max_players: maxPlayers,
-      },
-    });
-    return {
-      game_id:     res.game_id ?? res.gameId,
-      status:      res.status ?? 'waiting',
-      grid_size:   res.grid_size ?? gridSize,
-      max_players: res.max_players ?? maxPlayers,
-    };
-  }
-
-  async getGame(gameId) {
-    const res = await this._fetch(`/api/games/${gameId}`);
-    return this._normalizeGame(res);
-  }
+  // ---------- Games ----------
 
   async listGames() {
+    // Some servers expose /api/games, others may not. Try it; if unavailable return [].
     try {
-      const res = await this._fetch('/api/games');
-      const list = Array.isArray(res) ? res : (res.games ?? []);
-      return list.map(g => this._normalizeGame(g));
+      const body = await this._fetch('/api/games');
+      const list = Array.isArray(body) ? body : (pick(body, 'games') || []);
+      return list.map(normalizeGame);
     } catch (err) {
       if (err.status === 404 || err.status === 405) return [];
       throw err;
     }
+  }
+
+  async createGame({ creator_id, grid_size, max_players }) {
+    const body = await this._fetch('/api/games', {
+      method: 'POST',
+      body: { creator_id, grid_size, max_players },
+    });
+    return { game_id: pick(body, 'game_id', 'gameId', 'id'), _raw: body };
   }
 
   async joinGame(gameId, playerId) {
@@ -197,6 +180,11 @@ export class ApiClient {
       method: 'POST',
       body: { player_id: playerId },
     });
+  }
+
+  async getGame(gameId) {
+    const body = await this._fetch(`/api/games/${gameId}`);
+    return normalizeGame(body);
   }
 
   async placeShips(gameId, playerId, ships) {
@@ -207,63 +195,16 @@ export class ApiClient {
   }
 
   async fire(gameId, playerId, row, col) {
-    const res = await this._fetch(`/api/games/${gameId}/fire`, {
+    const body = await this._fetch(`/api/games/${gameId}/fire`, {
       method: 'POST',
       body: { player_id: playerId, row, col },
     });
-    return {
-      result:         res.result,
-      next_player_id: res.next_player_id ?? res.nextPlayerId ?? null,
-      game_status:    res.game_status ?? res.gameStatus ?? 'active',
-      winner_id:      res.winner_id ?? res.winnerId ?? null,
-    };
+    return normalizeFireResult(body);
   }
 
   async getMoves(gameId) {
-    const res = await this._fetch(`/api/games/${gameId}/moves`);
-    const list = Array.isArray(res) ? res : (res.moves ?? []);
-    return list.map(m => ({
-      player_id: m.player_id ?? m.playerId,
-      row:       m.row,
-      col:       m.col,
-      result:    m.result,
-      timestamp: m.timestamp ?? m.created_at ?? null,
-    }));
-  }
-
-  // ------------------------------------------------------------------
-  // Normalizers
-  // ------------------------------------------------------------------
-
-  _normalizePlayer(p) {
-    if (!p) return null;
-    return {
-      player_id: p.player_id ?? p.playerId ?? p.id,
-      username:  p.username  ?? p.name     ?? p.displayName ?? '',
-    };
-  }
-
-  _normalizeGame(g) {
-    if (!g) return null;
-    // Different servers may report slightly different status strings.
-    // We accept any of: 'waiting', 'waiting_setup', 'active', 'playing', 'finished'
-    const rawStatus = g.status ?? g.state ?? 'waiting';
-    let status = String(rawStatus).toLowerCase();
-    if (status === 'waiting_setup') status = 'waiting';
-    if (status === 'playing')       status = 'active';
-
-    return {
-      game_id:              g.game_id ?? g.gameId ?? g.id,
-      grid_size:            g.grid_size ?? g.gridSize ?? 10,
-      max_players:          g.max_players ?? g.maxPlayers ?? 2,
-      status,
-      current_turn_index:   g.current_turn_index ?? g.currentTurnIndex ?? 0,
-      current_turn_player_id: g.current_turn_player_id
-                              ?? g.currentTurnPlayerId
-                              ?? g.current_player_id
-                              ?? null,
-      active_players:       g.active_players ?? g.activePlayers ?? null,
-      total_moves:          g.total_moves ?? g.totalMoves ?? null,
-    };
+    const body = await this._fetch(`/api/games/${gameId}/moves`);
+    const list = Array.isArray(body) ? body : (pick(body, 'moves') || []);
+    return list.map(normalizeMove);
   }
 }

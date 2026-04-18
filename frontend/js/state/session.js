@@ -1,75 +1,51 @@
-/**
- * session.js — Ambient singleton holding the active ApiClient + polling loop.
- *
- * One place to:
- *   - attach/detach an ApiClient when server URL changes
- *   - drive the polling loop during lobby/placement/game
- *   - surface transport errors into toasts
- */
+// ==========================================================================
+// Session — holds the active ApiClient and coordinates polling loops
+// ==========================================================================
 
 import { ApiClient } from '../api/client.js';
-import { store } from './store.js';
 
-const POLL_INTERVALS = {
-  lobby:     2500,  // list games refresh
-  placement: 2000,  // waiting for opponents to place
-  game:      1500,  // fast enough to feel live, light enough for grading
-};
+let client = null;
+let pollTimer = null;
+let pollAbort = false;
 
-class Session {
-  constructor() {
-    this.client = null;
-    this._pollHandle = null;
-    this._pollKind = null;  // 'lobby' | 'placement' | 'game' | null
-    this._tickFn = null;
-  }
+export const session = {
+  /** Get or create the ApiClient for a given base URL. */
+  getClient(baseUrl) {
+    if (!baseUrl) return null;
+    if (!client || client.baseUrl !== baseUrl.replace(/\/+$/, '')) {
+      client = new ApiClient(baseUrl);
+    }
+    return client;
+  },
 
-  attach(baseUrl) {
-    this.client = new ApiClient(baseUrl);
-    return this.client;
-  }
-
-  detach() {
-    this.stopPolling();
-    this.client = null;
-  }
+  /** Clear the current client. */
+  clearClient() { client = null; },
 
   /**
-   * Start a polling loop. `kind` controls interval; `tickFn` is the async
-   * function run each tick. It receives the current client.
+   * Start a polling loop that invokes `fn` every `intervalMs`.
+   * `fn` may return a promise. Errors are caught and logged, never interrupt the loop.
+   * Automatically stops any existing loop.
    */
-  startPolling(kind, tickFn) {
+  startPolling(fn, intervalMs) {
     this.stopPolling();
-    if (!this.client) return;
+    pollAbort = false;
 
-    this._pollKind = kind;
-    this._tickFn = tickFn;
-    const interval = POLL_INTERVALS[kind] || 2000;
-
-    const loop = async () => {
-      if (this._pollKind !== kind) return; // stopped or switched
-      try {
-        await tickFn(this.client);
-      } catch (err) {
-        // Silent during polling — don't spam toasts on transient issues
-        console.warn('[poll]', err.message);
-      } finally {
-        if (this._pollKind === kind) {
-          this._pollHandle = setTimeout(loop, interval);
-        }
-      }
+    const tick = async () => {
+      if (pollAbort) return;
+      try { await fn(); }
+      catch (err) { console.warn('[session] poll error:', err); }
+      if (pollAbort) return;
+      pollTimer = setTimeout(tick, intervalMs);
     };
-
-    // Immediate first tick
-    loop();
-  }
+    // Fire once immediately, then on interval.
+    tick();
+  },
 
   stopPolling() {
-    if (this._pollHandle) clearTimeout(this._pollHandle);
-    this._pollHandle = null;
-    this._pollKind = null;
-    this._tickFn = null;
-  }
-}
-
-export const session = new Session();
+    pollAbort = true;
+    if (pollTimer) {
+      clearTimeout(pollTimer);
+      pollTimer = null;
+    }
+  },
+};

@@ -1,138 +1,116 @@
-/* ============================================================
-   DESIGN TOKENS
-   Modern Navy Hasbro — a premium product aesthetic.
-   Every color, every shadow, every radius flows from here.
-   ============================================================ */
+/* ==========================================================================
+   Design Tokens — Modern Navy Hasbro with Glassmorphism
+   ========================================================================== */
 
 :root {
-  /* ---- Brand blues ---- */
-  --c-navy-950: #050E1C;
-  --c-navy-900: #07162B;
-  --c-navy-800: #0B2D5B;     /* primary board blue */
-  --c-navy-700: #123E7A;
-  --c-navy-600: #1E6FA8;     /* secondary board blue */
-  --c-navy-500: #1F4E9A;     /* alt peg blue */
-  --c-navy-400: #4A8CC9;
-  --c-sky-200:  #B9D9F2;     /* soft board accent */
-  --c-sky-100:  #DDEBF7;
+  /* ----- Color: Navy foundation ----- */
+  --navy-950: #05070d;
+  --navy-900: #0a0f1e;
+  --navy-800: #111830;
+  --navy-700: #1a2344;
+  --navy-600: #24305a;
+  --navy-500: #334074;
+  --navy-400: #4f5c96;
+  --navy-300: #7e8ac2;
+  --navy-200: #b3badb;
+  --navy-100: #dfe2f0;
+  --navy-050: #eef0f8;
 
-  /* ---- Grays (for cells, chrome) ---- */
-  --c-gray-900: #171C23;
-  --c-gray-700: #3A444F;
-  --c-gray-600: #6E7B85;
-  --c-gray-400: #9AA4AD;
-  --c-gray-300: #C7CDD3;
-  --c-gray-200: #DEE3E8;
-  --c-gray-100: #EEF1F4;
-  --c-white:    #F4F6F8;
+  /* ----- Color: Hasbro accents ----- */
+  --brand-red:    #e6333d;
+  --brand-red-hi: #ff4a55;
+  --brand-gold:   #f0b32a;
+  --brand-gold-hi:#ffcb54;
+  --brand-teal:   #38c7c0;
+  --brand-teal-hi:#67e9e3;
 
-  /* ---- Pegs / markers ---- */
-  --c-hit:      #D62828;
-  --c-hit-glow: rgba(214, 40, 40, 0.55);
-  --c-miss:     #F4F6F8;
-  --c-sunk:     #7A1616;
+  /* ----- Semantic ----- */
+  --color-bg:        var(--navy-950);
+  --color-bg-deep:   #03050a;
+  --color-surface:   rgba(255,255,255,0.04);
+  --color-surface-2: rgba(255,255,255,0.07);
+  --color-surface-3: rgba(255,255,255,0.10);
+  --color-border:    rgba(255,255,255,0.09);
+  --color-border-hi: rgba(255,255,255,0.18);
+  --color-text:      var(--navy-050);
+  --color-text-dim:  var(--navy-200);
+  --color-text-mute: var(--navy-300);
 
-  /* ---- Semantic ---- */
-  --c-success:  #2FB57C;
-  --c-warn:     #F5B301;
-  --c-danger:   #D62828;
-  --c-info:     var(--c-navy-600);
+  /* ----- State colors ----- */
+  --color-hit:     var(--brand-red);
+  --color-hit-hi:  var(--brand-red-hi);
+  --color-miss:    var(--navy-400);
+  --color-sunk:    #7a1722;
+  --color-ship:    var(--brand-gold);
+  --color-ship-hi: var(--brand-gold-hi);
+  --color-target:  var(--brand-teal);
 
-  /* ---- Surfaces / glass ---- */
-  --surface-0:  rgba(255, 255, 255, 0.03);
-  --surface-1:  rgba(255, 255, 255, 0.05);
-  --surface-2:  rgba(255, 255, 255, 0.08);
-  --surface-3:  rgba(255, 255, 255, 0.12);
-  --glass-border: rgba(185, 217, 242, 0.14);
-  --glass-border-strong: rgba(185, 217, 242, 0.28);
+  --color-success: #3acf7e;
+  --color-warn:    var(--brand-gold);
+  --color-error:   var(--brand-red-hi);
+  --color-info:    var(--brand-teal);
 
-  /* ---- Text ---- */
-  --text-hi:    #F4F6F8;
-  --text-mid:   #B9C6D4;
-  --text-lo:    #7A8694;
-  --text-on-light: #07162B;
+  /* ----- Typography ----- */
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* ---- Typography ---- */
-  --font-display: 'Fraunces', 'Georgia', serif;
-  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Menlo', monospace;
+  --fs-xs:   0.75rem;
+  --fs-sm:   0.875rem;
+  --fs-base: 1rem;
+  --fs-md:   1.125rem;
+  --fs-lg:   1.375rem;
+  --fs-xl:   1.75rem;
+  --fs-2xl:  2.25rem;
+  --fs-3xl:  3rem;
 
-  /* Type scale (modular, 1.25) */
-  --fs-xs:    0.72rem;
-  --fs-sm:    0.85rem;
-  --fs-base:  1rem;
-  --fs-md:    1.125rem;
-  --fs-lg:    1.35rem;
-  --fs-xl:    1.75rem;
-  --fs-2xl:   2.35rem;
-  --fs-3xl:   3.25rem;
-  --fs-display: 4.5rem;
+  --lh-tight:  1.15;
+  --lh-normal: 1.5;
+  --lh-loose:  1.7;
 
-  /* ---- Spacing (4px base) ---- */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
-  --sp-5: 24px;
-  --sp-6: 32px;
-  --sp-7: 48px;
-  --sp-8: 64px;
-  --sp-9: 96px;
+  /* ----- Spacing ----- */
+  --sp-1:  0.25rem;
+  --sp-2:  0.5rem;
+  --sp-3:  0.75rem;
+  --sp-4:  1rem;
+  --sp-5:  1.25rem;
+  --sp-6:  1.5rem;
+  --sp-8:  2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
 
-  /* ---- Radii ---- */
-  --r-xs: 4px;
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 24px;
-  --r-2xl: 32px;
-  --r-full: 9999px;
+  /* ----- Radius ----- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
 
-  /* ---- Shadows (layered, for glass depth) ---- */
-  --shadow-sm:
-    0 1px 2px rgba(0,0,0,0.3),
-    0 0 0 1px var(--glass-border);
-  --shadow-md:
-    0 4px 12px rgba(0,0,0,0.4),
-    0 0 0 1px var(--glass-border),
-    inset 0 1px 0 rgba(255,255,255,0.05);
-  --shadow-lg:
-    0 12px 40px rgba(0,0,0,0.55),
-    0 2px 8px rgba(0,0,0,0.35),
-    0 0 0 1px var(--glass-border),
-    inset 0 1px 0 rgba(255,255,255,0.06);
-  --shadow-glow-blue:
-    0 0 32px rgba(30, 111, 168, 0.45),
-    0 0 0 1px rgba(30, 111, 168, 0.35);
-  --shadow-glow-red:
-    0 0 24px var(--c-hit-glow),
-    0 0 0 1px rgba(214, 40, 40, 0.4);
+  /* ----- Elevation ----- */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.25), 0 1px 1px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.18);
+  --shadow-lg: 0 18px 40px rgba(0,0,0,0.45), 0 6px 12px rgba(0,0,0,0.22);
+  --shadow-glow-red:  0 0 0 1px rgba(230,51,61,0.35), 0 8px 28px rgba(230,51,61,0.28);
+  --shadow-glow-gold: 0 0 0 1px rgba(240,179,42,0.35), 0 8px 28px rgba(240,179,42,0.24);
+  --shadow-glow-teal: 0 0 0 1px rgba(56,199,192,0.4), 0 8px 28px rgba(56,199,192,0.22);
 
-  /* ---- Motion ---- */
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-fast: 140ms;
-  --dur-med:  240ms;
-  --dur-slow: 480ms;
+  /* ----- Glass ----- */
+  --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+  --glass-border: 1px solid var(--color-border);
+  --glass-blur: blur(14px) saturate(120%);
 
-  /* ---- Layout ---- */
-  --maxw-content: 1280px;
-  --maxw-narrow:  720px;
-  --header-h:     64px;
+  /* ----- Motion ----- */
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+  --dur-slow:   360ms;
 
-  /* ---- Z-index ---- */
-  --z-base: 1;
-  --z-overlay: 50;
-  --z-toast: 100;
-  --z-modal: 200;
-}
-
-/* Prefers reduced motion — honor it */
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --dur-fast: 0.01ms;
-    --dur-med:  0.01ms;
-    --dur-slow: 0.01ms;
-  }
+  /* ----- Layout ----- */
+  --content-max: 1280px;
+  --sidebar-w:   340px;
+  --header-h:    68px;
+  --cell-min:    32px;
 }
