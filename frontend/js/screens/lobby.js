@@ -1,5 +1,5 @@
 // ==========================================================================
-// Lobby screen — register player, list/create/join games
+// Lobby screen — register or load player, list/create/join games
 // ==========================================================================
 
 import { h, mount } from '../utils/dom.js';
@@ -13,15 +13,13 @@ import { Identity } from '../../components/ui/Identity.js';
 import { Loader } from '../../components/ui/Loader.js';
 import { GameRow } from '../../components/features/GameRow.js';
 import { PlayerStatsCard } from '../../components/features/PlayerStatsCard.js';
-import { formatClock } from '../utils/format.js';
 
 export function render(mountEl) {
-  // ---- Local UI state ----
   let username = '';
   let gridSize = 8;
   let maxPlayers = 2;
   let creating = false;
-  let joining = new Set(); // game ids currently being joined
+  let joining = new Set();
   let registering = false;
   let games = [];
   let loadingGames = true;
@@ -30,40 +28,64 @@ export function render(mountEl) {
 
   const rerender = () => mount(mountEl, build());
 
-  // ---- Helpers ----
   function isMemberOf(game, playerId) {
     if (!game || !playerId) return false;
-    // game.creator_id is reliably present; other IDs only if server includes players list.
     if (game.creator_id === playerId) return true;
+
     if (Array.isArray(game.players)) {
-      return game.players.some(p => {
+      return game.players.some((p) => {
         const pid = typeof p === 'object' ? (p.player_id ?? p.playerId ?? p.id) : p;
         return pid === playerId;
       });
     }
+
     return false;
+  }
+
+  async function setActivePlayer(player) {
+    if (!player?.player_id) return;
+
+    store.set({
+      player: {
+        player_id: player.player_id,
+        username: player.username,
+      },
+    });
+
+    const client = session.getClient(store.get().serverUrl);
+    client?.getPlayerStats(player.player_id)
+      .then((stats) => store.set({ myStats: stats }))
+      .catch(() => {});
+
+    await refreshGames();
   }
 
   async function registerPlayer(name) {
     const client = session.getClient(store.get().serverUrl);
     if (!client) return;
-    if (!name || !name.trim()) {
+
+    const normalized = name?.trim();
+    if (!normalized) {
       toast.error('Enter a username.');
       return;
     }
+
     registering = true;
     rerender();
 
     try {
-      const { player_id } = await client.createPlayer(name.trim());
+      const { player_id } = await client.createPlayer(normalized);
       const full = await client.getPlayer(player_id).catch(() => ({
-        player_id, username: name.trim(),
+        player_id,
+        username: normalized,
       }));
-      store.set({ player: { player_id: full.player_id ?? player_id, username: full.username ?? name.trim() } });
-      toast.success('Registered', `Welcome, ${full.username || name.trim()}.`);
-      // Load stats and games now that we have a player identity
-      client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
-      refreshGames();
+
+      await setActivePlayer({
+        player_id: full.player_id ?? player_id,
+        username: full.username ?? normalized,
+      });
+
+      toast.success('Registered', `Welcome, ${full.username || normalized}.`);
     } catch (err) {
       toast.error('Registration failed', err.message);
     } finally {
@@ -72,42 +94,72 @@ export function render(mountEl) {
     }
   }
 
-  // AFTER
-async function createGame() {
-  const { player, serverUrl } = store.get();
-  if (!player) return;
-  const client = session.getClient(serverUrl);
-  creating = true;
-  rerender();
-  try {
-    const { game_id } = await client.createGame({
-      creator_id: player.player_id,
-      grid_size: Number(gridSize),
-      max_players: Number(maxPlayers),
-    });
-    toast.success('Game created', `#${game_id}`);
-    // Auto-join the creator into the game they just created, then enter placement.
-    // Some servers auto-add the creator; joinGame is a no-op or idempotent in that case.
-    try {
-      await client.joinGame(game_id, player.player_id);
-    } catch (joinErr) {
-      // Ignore join errors — the server may have already added the creator,
-      // or may return a 409/400 for a duplicate join. Either way, proceed.
-      console.warn('[createGame] joinGame after create:', joinErr.message);
+  async function loadExistingPlayer(name) {
+    const client = session.getClient(store.get().serverUrl);
+    if (!client) return;
+
+    const normalized = name?.trim();
+    if (!normalized) {
+      toast.error('Enter a username.');
+      return;
     }
-    enterGame(game_id);
-  } catch (err) {
-    toast.error('Create failed', err.message);
-    creating = false;
+
+    registering = true;
     rerender();
+
+    try {
+      const existing = await client.getPlayerByUsername(normalized);
+      await setActivePlayer(existing);
+      toast.success('Signed in', `Welcome back, ${existing.username}.`);
+    } catch (err) {
+      toast.error('Sign in failed', err.message);
+    } finally {
+      registering = false;
+      rerender();
+    }
   }
-}
+
+  async function createGame() {
+    const { player, serverUrl } = store.get();
+    if (!player) return;
+
+    const client = session.getClient(serverUrl);
+    creating = true;
+    rerender();
+
+    try {
+      const { game_id } = await client.createGame({
+        creator_id: player.player_id,
+        grid_size: Number(gridSize),
+        max_players: Number(maxPlayers),
+      });
+
+      toast.success('Game created', `#${game_id}`);
+
+      try {
+        await client.joinGame(game_id, player.player_id);
+      } catch (joinErr) {
+        console.warn('[createGame] joinGame after create:', joinErr.message);
+      }
+
+      enterGame(game_id);
+    } catch (err) {
+      toast.error('Create failed', err.message);
+      creating = false;
+      rerender();
+    }
+  }
 
   async function joinGame(game) {
     const { player } = store.get();
-    if (!player) { toast.error('Register first.'); return; }
+    if (!player) {
+      toast.error('Register or load a player first.');
+      return;
+    }
+
     joining.add(game.game_id);
     rerender();
+
     try {
       const client = session.getClient(store.get().serverUrl);
       await client.joinGame(game.game_id, player.player_id);
@@ -123,15 +175,15 @@ async function createGame() {
   async function enterGame(gameId) {
     session.stopPolling();
     const client = session.getClient(store.get().serverUrl);
+
     try {
       const game = await client.getGame(gameId);
       store.resetGame();
       store.set({ gameId, game });
 
-      // Route based on current status
-      if (game.status === 'waiting') {
+      if (game.status === 'waiting' || game.status === 'waiting_setup') {
         store.set({ screen: 'placement' });
-      } else if (game.status === 'active') {
+      } else if (game.status === 'active' || game.status === 'playing') {
         store.set({ screen: 'game' });
       } else if (game.status === 'finished') {
         store.set({ screen: 'end' });
@@ -146,6 +198,7 @@ async function createGame() {
   async function refreshGames() {
     const client = session.getClient(store.get().serverUrl);
     if (!client) return;
+
     try {
       const list = await client.listGames();
       games = list;
@@ -162,21 +215,22 @@ async function createGame() {
   async function refreshStats() {
     const { player } = store.get();
     if (!player) return;
+
     const client = session.getClient(store.get().serverUrl);
     try {
       const stats = await client.getPlayerStats(player.player_id);
       store.set({ myStats: stats });
-    } catch { /* non-fatal */ }
+    } catch (_) {
+      // non-fatal
+    }
   }
-
-  // ---- Build pieces ----
 
   function buildRegistrationCard() {
     return Card({
       variant: 'feature',
       children: h('div', { class: 'stack' },
         h('h3', { class: 'card__title' }, 'Who are you?'),
-        h('p', { class: 'card__meta' }, 'Register a player identity to get started.'),
+        h('p', { class: 'card__meta' }, 'Create a new username or reuse an existing one on this server.'),
         Field({
           label: 'Username',
           children: Input({
@@ -184,18 +238,28 @@ async function createGame() {
             placeholder: 'e.g. Johan',
             autofocus: true,
             disabled: registering,
-            onInput: v => { username = v; },
-            onEnter: v => registerPlayer(v),
+            onInput: (v) => { username = v; },
+            onEnter: (v) => registerPlayer(v),
           }),
         }),
-        Button({
-          variant: 'primary',
-          size: 'lg',
-          block: true,
-          loading: registering,
-          onClick: () => registerPlayer(username),
-          children: 'Register',
-        }),
+        h('div', { class: 'row-sm' },
+          Button({
+            variant: 'primary',
+            size: 'lg',
+            block: true,
+            loading: registering,
+            onClick: () => registerPlayer(username),
+            children: 'Register new',
+          }),
+          Button({
+            variant: 'secondary',
+            size: 'lg',
+            block: true,
+            disabled: registering,
+            onClick: () => loadExistingPlayer(username),
+            children: 'Use existing',
+          }),
+        ),
       ),
     });
   }
@@ -209,16 +273,22 @@ async function createGame() {
           hint: '5–15',
           children: Select({
             value: gridSize,
-            options: [5, 6, 7, 8, 9, 10, 12, 15].map(n => ({ value: n, label: `${n} × ${n}` })),
-            onChange: v => { gridSize = Number(v); },
+            options: [5, 6, 7, 8, 9, 10, 12, 15].map((n) => ({
+              value: n,
+              label: `${n} × ${n}`,
+            })),
+            onChange: (v) => { gridSize = Number(v); },
           }),
         }),
         Field({
           label: 'Max players',
           children: Select({
             value: maxPlayers,
-            options: [2, 3, 4].map(n => ({ value: n, label: String(n) })),
-            onChange: v => { maxPlayers = Number(v); },
+            options: [2, 3, 4].map((n) => ({
+              value: n,
+              label: String(n),
+            })),
+            onChange: (v) => { maxPlayers = Number(v); },
           }),
         }),
         Button({
@@ -236,7 +306,9 @@ async function createGame() {
     const { player } = store.get();
     const pid = player?.player_id;
 
-    if (loadingGames) return Loader({ label: 'Loading games…', center: true });
+    if (loadingGames) {
+      return Loader({ label: 'Loading games…', center: true });
+    }
 
     if (listError) {
       return h('div', { class: 'empty-state' },
@@ -255,90 +327,98 @@ async function createGame() {
       );
     }
 
-    // Sort: waiting → active → finished, then newest by id desc
-    const order = { waiting: 0, active: 1, finished: 2 };
+    const order = { waiting: 0, waiting_setup: 0, active: 1, playing: 1, finished: 2 };
     const sorted = [...games].sort((a, b) => {
-      const oa = order[a.status] ?? 9;
-      const ob = order[b.status] ?? 9;
-      if (oa !== ob) return oa - ob;
-      return (b.game_id || 0) - (a.game_id || 0);
+      const ao = order[a.status] ?? 99;
+      const bo = order[b.status] ?? 99;
+      if (ao !== bo) return ao - bo;
+      return (b.game_id ?? 0) - (a.game_id ?? 0);
     });
 
-    return h('div', { class: 'games-list stagger' },
-      ...sorted.map(g => GameRow({
-        game: g,
-        isMember: isMemberOf(g, pid),
-        canJoin: !!pid,
-        onJoin: joinGame,
-        onView: enterGame.bind(null, g.game_id),
+    return h('div', { class: 'stack' },
+      ...sorted.map((game) => GameRow({
+        game,
+        mine: isMemberOf(game, pid),
+        joining: joining.has(game.game_id),
+        onJoin: () => joinGame(game),
+        onOpen: () => enterGame(game.game_id),
       })),
     );
   }
 
-  function build() {
+  function buildIdentitySection() {
     const { player, myStats } = store.get();
 
     if (!player) {
-      // Registration-only view
-      return h('div', { class: 'screen screen--narrow fade-in' },
-        h('div', { class: 'screen__header' },
-          h('h1', {}, 'Lobby'),
-          h('div', { class: 'subtitle' }, 'First things first — let\'s register you.'),
-        ),
-        buildRegistrationCard(),
-      );
+      return buildRegistrationCard();
     }
 
-    return h('div', { class: 'screen fade-in' },
-      h('div', { class: 'screen__header row-between' },
-        h('div', {},
-          h('h1', {}, 'Lobby'),
-          h('div', { class: 'subtitle' }, 'Browse games, join one, or create your own.'),
+    return h('div', { class: 'stack' },
+      Card({
+        children: h('div', { class: 'stack' },
+          Identity({
+            name: player.username,
+            subtitle: `Player #${player.player_id}`,
+          }),
+          h('div', { class: 'row-sm' },
+            Button({
+              size: 'sm',
+              variant: 'secondary',
+              onClick: refreshStats,
+              children: 'Refresh stats',
+            }),
+            Button({
+              size: 'sm',
+              variant: 'ghost',
+              onClick: () => {
+                store.set({ player: null, myStats: null });
+                username = '';
+                rerender();
+              },
+              children: 'Log out',
+            }),
+          ),
         ),
-        Identity({ name: player.username, me: true, large: true }),
+      }),
+      myStats ? PlayerStatsCard({ stats: myStats }) : null,
+    );
+  }
+
+  function build() {
+    const { player } = store.get();
+
+    return h('div', { class: 'stack stack--lg' },
+      h('div', { class: 'stack' },
+        h('h2', {}, 'Lobby'),
+        h('p', { class: 'screen__lede' }, 'Choose a player identity, then create or join a game.'),
       ),
 
-      h('div', { class: 'lobby-grid' },
-        // Left: games list
-        h('section', {},
-          h('div', { class: 'lobby-section-head' },
-            h('h3', {}, 'Games'),
+      buildIdentitySection(),
+
+      player ? buildCreateCard() : null,
+
+      Card({
+        children: h('div', { class: 'stack' },
+          h('div', { class: 'row row--between row--center' },
+            h('h3', { class: 'card__title' }, 'Open games'),
             h('div', { class: 'row-sm' },
-              h('span', { class: 'count' },
-                lastRefreshedAt
-                  ? `${games.length} games · updated ${formatClock(lastRefreshedAt)}`
-                  : `${games.length} games`,
-              ),
+              lastRefreshedAt
+                ? h('span', { class: 'card__meta' }, `Updated ${lastRefreshedAt.toLocaleTimeString()}`)
+                : null,
               Button({
-                variant: 'teal',
                 size: 'sm',
+                variant: 'secondary',
                 onClick: refreshGames,
-                disabled: loadingGames,
-                children: loadingGames ? 'Refreshing…' : '↻ Refresh',
+                children: 'Refresh',
               }),
             ),
           ),
           buildGamesList(),
         ),
-
-        // Right: create + stats
-        h('aside', { class: 'stack' },
-          buildCreateCard(),
-          PlayerStatsCard({ stats: myStats, title: 'Your stats' }),
-        ),
-      ),
+      }),
     );
   }
 
-  // ---- Initial render + kickoff ----
+  refreshGames();
   rerender();
-
-  const { player } = store.get();
-  if (player) {
-    refreshGames();
-    refreshStats();
-    // Note: no auto-polling. The user refreshes the games list manually via the
-    // Refresh button. This avoids constant DOM rebuilds that disrupt interaction
-    // (hover states, cursor position, focus) every couple seconds.
-  }
 }
