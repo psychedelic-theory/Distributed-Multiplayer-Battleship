@@ -61,8 +61,9 @@ export function render(mountEl) {
       }));
       store.set({ player: { player_id: full.player_id ?? player_id, username: full.username ?? name.trim() } });
       toast.success('Registered', `Welcome, ${full.username || name.trim()}.`);
-      // Load stats opportunistically
+      // Load stats and games now that we have a player identity
       client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
+      refreshGames();
     } catch (err) {
       toast.error('Registration failed', err.message);
     } finally {
