@@ -160,6 +160,11 @@ export class ApiClient {
     return normalizePlayer(body);
   }
 
+  async getPlayerByUsername(username) {
+    const body = await this._fetch(`/api/players/by-username/${encodeURIComponent(username)}`);
+    return normalizePlayer(body);
+  }
+
   async getPlayerStats(playerId) {
     const body = await this._fetch(`/api/players/${playerId}/stats`);
     return normalizeStats(body);

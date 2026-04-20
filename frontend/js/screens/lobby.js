@@ -51,20 +51,46 @@ export function render(mountEl) {
       toast.error('Enter a username.');
       return;
     }
+
+    const trimmed = name.trim();
+
     registering = true;
     rerender();
 
     try {
-      const { player_id } = await client.createPlayer(name.trim());
-      const full = await client.getPlayer(player_id).catch(() => ({
-        player_id, username: name.trim(),
-      }));
-      store.set({ player: { player_id: full.player_id ?? player_id, username: full.username ?? name.trim() } });
-      toast.success('Registered', `Welcome, ${full.username || name.trim()}.`);
-      // Load stats opportunistically
-      client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
+      let full;
+
+      try {
+        // First try logging into an existing account
+        full = await client.getPlayerByUsername(trimmed);
+        toast.success('Welcome back', `Logged in as ${full.username}.`);
+      } catch (err) {
+        // If username does not exist, create a new account
+        if (err.status === 404) {
+          const { player_id } = await client.createPlayer(trimmed);
+          full = await client.getPlayer(player_id).catch(() => ({
+            player_id,
+            username: trimmed,
+          }));
+          toast.success('Registered', `Welcome, ${full.username}.`);
+        } else {
+          throw err;
+        }
+      }
+
+      store.set({
+        player: {
+          player_id: full.player_id,
+          username: full.username,
+        }
+      });
+
+      client
+        .getPlayerStats(full.player_id)
+        .then(stats => store.set({ myStats: stats }))
+        .catch(() => {});
     } catch (err) {
-      toast.error('Registration failed', err.message);
+      toast.error('Login failed', err.message);
     } finally {
       registering = false;
       rerender();
