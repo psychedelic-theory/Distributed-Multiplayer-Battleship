@@ -72,31 +72,30 @@ export function render(mountEl) {
    *  - HIT by an opponent on a non-ship coord: must have been aimed at someone else (can't be here).
    *  - MISS by an opponent: can only be confidently placed on my board if this is a 2-player game.
    */
-  function opponentShotsOnMe(myId, myShips) {
-    const shipSet = new Set(myShips.map(s => `${s.row},${s.col}`));
-    const playerCount = store.get().game?.max_players ?? 2;
-    const isTwoPlayer = Number(playerCount) <= 2;
+  // AFTER
+function opponentShotsOnMe(myId) {
+  const playerCount = store.get().game?.max_players ?? 2;
+  const isTwoPlayer = Number(playerCount) <= 2;
 
-    const hits = [];
-    const misses = [];
-    for (const m of moves) {
-      if (m.player_id === myId) continue;
-      const key = `${m.row},${m.col}`;
-      if (m.result === 'hit') {
-        // Only surface as a hit on MY board if it lands on one of my ship cells.
-        if (shipSet.has(key)) hits.push({ row: m.row, col: m.col });
-      } else if (m.result === 'miss') {
-        // In a 2-player game every miss by the opponent is aimed at me. In N>2,
-        // we can't know the target, so skip to avoid rendering phantom misses.
-        if (isTwoPlayer) misses.push({ row: m.row, col: m.col });
-      }
+  const hits = [];
+  const misses = [];
+  for (const m of moves) {
+    if (m.player_id === myId) continue;
+    if (m.result === 'hit') {
+      // Server confirmed this as a hit — render it unconditionally.
+      // We no longer cross-check against myShips because myShips may be
+      // empty or stale, causing valid hits to be silently dropped.
+      hits.push({ row: m.row, col: m.col });
+    } else if (m.result === 'miss') {
+      if (isTwoPlayer) misses.push({ row: m.row, col: m.col });
     }
-    const uniq = (arr) => {
-      const seen = new Set();
-      return arr.filter(c => { const k = `${c.row},${c.col}`; if (seen.has(k)) return false; seen.add(k); return true; });
-    };
-    return { hits: uniq(hits), misses: uniq(misses) };
   }
+  const uniq = (arr) => {
+    const seen = new Set();
+    return arr.filter(c => { const k = `${c.row},${c.col}`; if (seen.has(k)) return false; seen.add(k); return true; });
+  };
+  return { hits: uniq(hits), misses: uniq(misses) };
+}
 
   // ---- Turn resolver ----
   // Some servers return `current_turn_player_id`; others only return `current_turn_index`
@@ -256,7 +255,7 @@ export function render(mountEl) {
 
     // Derive markers
     const myShots = myShotsFromMoves(myId);
-    const oppShots = opponentShotsOnMe(myId, myShips || []);
+    const oppShots = opponentShotsOnMe(myId);
 
     // Stats (session)
     const myMoves = moves.filter(m => m.player_id === myId);
