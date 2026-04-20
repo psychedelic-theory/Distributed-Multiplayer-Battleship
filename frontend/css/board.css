@@ -104,7 +104,12 @@
   content: "✕";
   color: var(--brand-red-hi);
   font-weight: 700;
-  font-size: 1.2em;
+  font-size: clamp(8px, 1em, 14px);
+  line-height: 1;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   text-shadow: 0 0 8px rgba(230,51,61,0.8);
 }
 .cell--hit.cell--ship::before { display: none; }
