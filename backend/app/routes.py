@@ -145,43 +145,6 @@ def get_player(player_id):
 
 
 # ---------------------------------------------------------------------------
-# GET /api/players/by-username/<username>
-# ---------------------------------------------------------------------------
-
-@api.route("/players/by-username/<username>", methods=["GET"])
-def get_player_by_username(username):
-    if not isinstance(username, str):
-        return err("bad_request", 400)
-
-    username = username.strip()
-
-    if not username:
-        return err("bad_request", 400)
-    if len(username) > 30:
-        return err("bad_request", 400)
-    if not re.fullmatch(r"[A-Za-z0-9_]+", username):
-        return err("bad_request", 400)
-
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT player_id, username
-                FROM players WHERE username=%s
-                """,
-                (username,),
-            )
-            row = cur.fetchone()
-
-    if not row:
-        return err("Player not found", 404)
-
-    return jsonify({
-        "player_id": row["player_id"],
-        "username": row["username"],
-    }), 200
-
-# ---------------------------------------------------------------------------
 # GET /api/players/<id>/stats
 # ---------------------------------------------------------------------------
 
