@@ -71,27 +71,36 @@ export function render(mountEl) {
     }
   }
 
-  async function createGame() {
-    const { player, serverUrl } = store.get();
-    if (!player) return;
-    const client = session.getClient(serverUrl);
-    creating = true;
-    rerender();
+  // AFTER
+async function createGame() {
+  const { player, serverUrl } = store.get();
+  if (!player) return;
+  const client = session.getClient(serverUrl);
+  creating = true;
+  rerender();
+  try {
+    const { game_id } = await client.createGame({
+      creator_id: player.player_id,
+      grid_size: Number(gridSize),
+      max_players: Number(maxPlayers),
+    });
+    toast.success('Game created', `#${game_id}`);
+    // Auto-join the creator into the game they just created, then enter placement.
+    // Some servers auto-add the creator; joinGame is a no-op or idempotent in that case.
     try {
-      const { game_id } = await client.createGame({
-        creator_id: player.player_id,
-        grid_size: Number(gridSize),
-        max_players: Number(maxPlayers),
-      });
-      toast.success('Game created', `#${game_id}`);
-      // Jump straight into placement for this game
-      enterGame(game_id);
-    } catch (err) {
-      toast.error('Create failed', err.message);
-      creating = false;
-      rerender();
+      await client.joinGame(game_id, player.player_id);
+    } catch (joinErr) {
+      // Ignore join errors — the server may have already added the creator,
+      // or may return a 409/400 for a duplicate join. Either way, proceed.
+      console.warn('[createGame] joinGame after create:', joinErr.message);
     }
+    enterGame(game_id);
+  } catch (err) {
+    toast.error('Create failed', err.message);
+    creating = false;
+    rerender();
   }
+}
 
   async function joinGame(game) {
     const { player } = store.get();
