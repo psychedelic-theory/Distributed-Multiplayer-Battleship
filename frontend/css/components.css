@@ -159,6 +159,10 @@
 
 .input--mono { font-family: var(--font-mono); }
 
+.select option {
+  background: var(--navy-800);
+  color: var(--color-text);
+}
 .field__error {
   color: var(--color-error);
   font-size: var(--fs-xs);
