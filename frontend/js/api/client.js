@@ -108,11 +108,20 @@ export class ApiClient {
 
   async _fetch(path, options = {}) {
     const url = this.baseUrl + path;
+    const method = options.method || 'GET';
+    const hasBody = options.body !== undefined;
+
     const init = {
-      method: options.method || 'GET',
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      method,
+      headers: {
+        // Only set Content-Type when there is actually a request body.
+        // Sending Content-Type on a body-less GET triggers a CORS preflight
+        // which can cause "Failed to fetch" network errors.
+        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
     };
-    if (options.body !== undefined) init.body = JSON.stringify(options.body);
+    if (hasBody) init.body = JSON.stringify(options.body);
 
     let res;
     try {
@@ -137,11 +146,8 @@ export class ApiClient {
 
   /** Quick health/probe — tries /api/games (a GET) or falls back. */
   async probe() {
-    // Simplest reliable probe: attempt a non-destructive GET. If the server exposes
-    // /api/games listing, great; otherwise the 404/405 response still tells us it's alive.
     try {
       const res = await fetch(this.baseUrl + '/api/games', { method: 'GET' });
-      // Any response (even 404) means the server is reachable. Network error will throw above.
       return { ok: true, status: res.status };
     } catch (err) {
       throw new ApiError(`Cannot reach ${this.baseUrl}: ${err.message}`, { endpoint: '/api/games' });
@@ -160,6 +166,11 @@ export class ApiClient {
     return normalizePlayer(body);
   }
 
+  async getPlayerByUsername(username) {
+    const body = await this._fetch(`/api/players/by-username/${encodeURIComponent(username)}`);
+    return normalizePlayer(body);
+  }
+
   async getPlayerStats(playerId) {
     const body = await this._fetch(`/api/players/${playerId}/stats`);
     return normalizeStats(body);
@@ -168,7 +179,6 @@ export class ApiClient {
   // ---------- Games ----------
 
   async listGames() {
-    // Some servers expose /api/games, others may not. Try it; if unavailable return [].
     try {
       const body = await this._fetch('/api/games');
       const list = Array.isArray(body) ? body : (pick(body, 'games') || []);

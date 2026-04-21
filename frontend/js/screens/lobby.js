@@ -54,10 +54,10 @@ export function render(mountEl) {
     rerender();
 
     try {
-      const body = await client._fetch(`/api/players/by-username/${encodeURIComponent(trimmed)}`);
+      const body = await client.getPlayerByUsername(trimmed);
       // Normalize whichever shape the server returns
-      const player_id = body.player_id ?? body.playerId ?? body.id;
-      const uname = body.username ?? body.name ?? trimmed;
+      const player_id = body.player_id;
+      const uname = body.username ?? trimmed;
       store.set({ player: { player_id, username: uname } });
       toast.success('Signed in', `Welcome back, ${uname}.`);
       client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});

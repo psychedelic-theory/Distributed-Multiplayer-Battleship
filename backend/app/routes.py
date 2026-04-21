@@ -145,6 +145,29 @@ def get_player(player_id):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/players/by-username/<username>
+# ---------------------------------------------------------------------------
+
+@api.route("/players/by-username/<username>", methods=["GET"])
+def get_player_by_username(username):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT player_id, username FROM players WHERE username=%s",
+                (username,),
+            )
+            row = cur.fetchone()
+
+    if not row:
+        return err("Player not found", 404)
+
+    return jsonify({
+        "player_id": row["player_id"],
+        "username":  row["username"],
+    }), 200
+
+
+# ---------------------------------------------------------------------------
 # GET /api/players/<id>/stats
 # ---------------------------------------------------------------------------
 
