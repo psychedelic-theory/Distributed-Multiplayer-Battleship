@@ -63,7 +63,6 @@ export function render(mountEl) {
       toast.success('Registered', `Welcome, ${full.username || name.trim()}.`);
       // Load stats opportunistically
       client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
-        refreshGames();
     } catch (err) {
       toast.error('Registration failed', err.message);
     } finally {
