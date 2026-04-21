@@ -47,24 +47,56 @@ export function render(mountEl) {
   async function registerPlayer(name) {
     const client = session.getClient(store.get().serverUrl);
     if (!client) return;
-    if (!name || !name.trim()) {
+
+    const trimmed = (name || '').trim();
+    if (!trimmed) {
       toast.error('Enter a username.');
       return;
     }
+
     registering = true;
+    loadingGames = true;
+    listError = '';
     rerender();
 
     try {
-      const { player_id } = await client.createPlayer(name.trim());
-      const full = await client.getPlayer(player_id).catch(() => ({
-        player_id, username: name.trim(),
-      }));
-      store.set({ player: { player_id: full.player_id ?? player_id, username: full.username ?? name.trim() } });
-      toast.success('Registered', `Welcome, ${full.username || name.trim()}.`);
-      client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
-      await refreshGames();
+      let full;
+
+      // Try existing account first
+      try {
+        full = await client.getPlayerByUsername(trimmed);
+        toast.success('Welcome back', `Logged in as ${full.username}.`);
+      } catch (err) {
+        // If username doesn't exist, create it
+        if (err.status === 404) {
+          const { player_id } = await client.createPlayer(trimmed);
+          full = await client.getPlayer(player_id).catch(() => ({
+            player_id,
+            username: trimmed,
+          }));
+          toast.success('Registered', `Welcome, ${full.username}.`);
+        } else {
+          throw err;
+        }
+      }
+
+      store.set({
+        player: {
+          player_id: full.player_id,
+          username: full.username,
+        }
+      });
+
+      // Refresh stats and games immediately after login
+      await Promise.all([
+        client.getPlayerStats(full.player_id)
+          .then(stats => store.set({ myStats: stats }))
+          .catch(() => {}),
+        refreshGames()
+      ]);
+
     } catch (err) {
-      toast.error('Registration failed', err.message);
+      toast.error('Login failed', err.message);
     } finally {
       registering = false;
       rerender();
