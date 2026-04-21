@@ -1,5 +1,5 @@
 // ==========================================================================
-// Lobby screen — register player, list/create/join games
+// Lobby screen — sign in or create account, list/create/join games
 // ==========================================================================
 
 import { h, mount } from '../utils/dom.js';
@@ -16,13 +16,17 @@ import { PlayerStatsCard } from '../../components/features/PlayerStatsCard.js';
 import { formatClock } from '../utils/format.js';
 
 export function render(mountEl) {
-  // ---- Local UI state ----
+  // ---- Auth mode state ----
+  let authMode = 'signin'; // 'signin' | 'create'
   let username = '';
+  let authError = '';
+  let authing = false;
+
+  // ---- Game list state ----
   let gridSize = 8;
   let maxPlayers = 2;
   let creating = false;
-  let joining = new Set(); // game ids currently being joined
-  let registering = false;
+  let joining = new Set();
   let games = [];
   let loadingGames = true;
   let listError = '';
@@ -30,10 +34,93 @@ export function render(mountEl) {
 
   const rerender = () => mount(mountEl, build());
 
+  // ---- Auth mode toggle ----
+  function switchMode(mode) {
+    authMode = mode;
+    username = '';
+    authError = '';
+    rerender();
+  }
+
+  // ---- Sign in: GET /api/players/by-username/<username> ----
+  async function signIn(name) {
+    const client = session.getClient(store.get().serverUrl);
+    if (!client) return;
+    const trimmed = (name || '').trim();
+    if (!trimmed) { authError = 'Enter your username.'; rerender(); return; }
+
+    authing = true;
+    authError = '';
+    rerender();
+
+    try {
+      const body = await client._fetch(`/api/players/by-username/${encodeURIComponent(trimmed)}`);
+      // Normalize whichever shape the server returns
+      const player_id = body.player_id ?? body.playerId ?? body.id;
+      const uname = body.username ?? body.name ?? trimmed;
+      store.set({ player: { player_id, username: uname } });
+      toast.success('Signed in', `Welcome back, ${uname}.`);
+      client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
+      refreshGames();
+    } catch (err) {
+      if (err.status === 404) {
+        authError = 'No account found with that username.';
+      } else {
+        authError = err.message || 'Sign in failed.';
+      }
+    } finally {
+      authing = false;
+      rerender();
+    }
+  }
+
+  // ---- Create account: POST /api/players ----
+  async function createAccount(name) {
+    const client = session.getClient(store.get().serverUrl);
+    if (!client) return;
+    const trimmed = (name || '').trim();
+    if (!trimmed) { authError = 'Enter a username.'; rerender(); return; }
+
+    authing = true;
+    authError = '';
+    rerender();
+
+    try {
+      const { player_id } = await client.createPlayer(trimmed);
+      const full = await client.getPlayer(player_id).catch(() => ({ player_id, username: trimmed }));
+      store.set({ player: { player_id: full.player_id ?? player_id, username: full.username ?? trimmed } });
+      toast.success('Account created', `Welcome, ${full.username || trimmed}.`);
+      client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
+      refreshGames();
+    } catch (err) {
+      if (err.status === 409) {
+        authError = 'That username is already taken.';
+      } else {
+        authError = err.message || 'Registration failed.';
+      }
+    } finally {
+      authing = false;
+      rerender();
+    }
+  }
+
+  function handleAuthSubmit() {
+    if (authMode === 'signin') signIn(username);
+    else createAccount(username);
+  }
+
+  // ---- Sign out ----
+  function signOut() {
+    store.set({ player: null, myStats: null });
+    authMode = 'signin';
+    username = '';
+    authError = '';
+    rerender();
+  }
+
   // ---- Helpers ----
   function isMemberOf(game, playerId) {
     if (!game || !playerId) return false;
-    // game.creator_id is reliably present; other IDs only if server includes players list.
     if (game.creator_id === playerId) return true;
     if (Array.isArray(game.players)) {
       return game.players.some(p => {
@@ -44,68 +131,35 @@ export function render(mountEl) {
     return false;
   }
 
-  async function registerPlayer(name) {
-    const client = session.getClient(store.get().serverUrl);
-    if (!client) return;
-    if (!name || !name.trim()) {
-      toast.error('Enter a username.');
-      return;
-    }
-    registering = true;
+  async function createGame() {
+    const { player, serverUrl } = store.get();
+    if (!player) return;
+    const client = session.getClient(serverUrl);
+    creating = true;
     rerender();
-
     try {
-      const { player_id } = await client.createPlayer(name.trim());
-      const full = await client.getPlayer(player_id).catch(() => ({
-        player_id, username: name.trim(),
-      }));
-      store.set({ player: { player_id: full.player_id ?? player_id, username: full.username ?? name.trim() } });
-      toast.success('Registered', `Welcome, ${full.username || name.trim()}.`);
-      // Load stats and games now that we have a player identity
-      client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
-      refreshGames();
+      const { game_id } = await client.createGame({
+        creator_id: player.player_id,
+        grid_size: Number(gridSize),
+        max_players: Number(maxPlayers),
+      });
+      toast.success('Game created', `#${game_id}`);
+      try {
+        await client.joinGame(game_id, player.player_id);
+      } catch (joinErr) {
+        console.warn('[createGame] joinGame after create:', joinErr.message);
+      }
+      enterGame(game_id);
     } catch (err) {
-      toast.error('Registration failed', err.message);
-    } finally {
-      registering = false;
+      toast.error('Create failed', err.message);
+      creating = false;
       rerender();
     }
   }
 
-  // AFTER
-async function createGame() {
-  const { player, serverUrl } = store.get();
-  if (!player) return;
-  const client = session.getClient(serverUrl);
-  creating = true;
-  rerender();
-  try {
-    const { game_id } = await client.createGame({
-      creator_id: player.player_id,
-      grid_size: Number(gridSize),
-      max_players: Number(maxPlayers),
-    });
-    toast.success('Game created', `#${game_id}`);
-    // Auto-join the creator into the game they just created, then enter placement.
-    // Some servers auto-add the creator; joinGame is a no-op or idempotent in that case.
-    try {
-      await client.joinGame(game_id, player.player_id);
-    } catch (joinErr) {
-      // Ignore join errors — the server may have already added the creator,
-      // or may return a 409/400 for a duplicate join. Either way, proceed.
-      console.warn('[createGame] joinGame after create:', joinErr.message);
-    }
-    enterGame(game_id);
-  } catch (err) {
-    toast.error('Create failed', err.message);
-    creating = false;
-    rerender();
-  }
-}
-
   async function joinGame(game) {
     const { player } = store.get();
-    if (!player) { toast.error('Register first.'); return; }
+    if (!player) { toast.error('Sign in first.'); return; }
     joining.add(game.game_id);
     rerender();
     try {
@@ -127,8 +181,6 @@ async function createGame() {
       const game = await client.getGame(gameId);
       store.resetGame();
       store.set({ gameId, game });
-
-      // Route based on current status
       if (game.status === 'waiting') {
         store.set({ screen: 'placement' });
       } else if (game.status === 'active') {
@@ -169,37 +221,87 @@ async function createGame() {
     } catch { /* non-fatal */ }
   }
 
-  // ---- Build pieces ----
+  // ---- Auth card (sign-in or create-account) ----
+  function buildAuthCard() {
+    const isSignIn = authMode === 'signin';
+    const title = isSignIn ? 'Sign in' : 'Create account';
+    const subtitle = isSignIn
+      ? 'Enter your username to pick up where you left off.'
+      : 'Choose a username to get started.';
+    const btnLabel = isSignIn ? 'Sign in' : 'Create account';
+    const toggleLabel = isSignIn ? 'No account yet? ' : 'Already have one? ';
+    const toggleAction = isSignIn ? 'Create one' : 'Sign in';
 
-  function buildRegistrationCard() {
+    // Error message with optional mode-switch link
+    let errorNode = null;
+    if (authError) {
+      const showSwitch = (isSignIn && authError.includes('No account'))
+        || (!isSignIn && authError.includes('already taken'));
+      errorNode = h('div', { class: 'field__error', style: { marginTop: '0' } },
+        authError,
+        showSwitch && ' ',
+        showSwitch && h('span', {
+          style: {
+            color: 'var(--brand-teal-hi)',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+            fontSize: 'inherit',
+          },
+          onClick: () => switchMode(isSignIn ? 'create' : 'signin'),
+        }, isSignIn ? 'Create an account instead?' : 'Sign in instead?'),
+      );
+    }
+
     return Card({
       variant: 'feature',
       children: h('div', { class: 'stack' },
-        h('h3', { class: 'card__title' }, 'Who are you?'),
-        h('p', { class: 'card__meta' }, 'Register a player identity to get started.'),
+        h('div', {},
+          h('h3', { class: 'card__title' }, title),
+          h('p', { class: 'card__meta', style: { marginBottom: '0' } }, subtitle),
+        ),
         Field({
           label: 'Username',
           children: Input({
             value: username,
-            placeholder: 'e.g. Johan',
+            placeholder: isSignIn ? 'Your username' : 'e.g. Johan',
             autofocus: true,
-            disabled: registering,
+            disabled: authing,
             onInput: v => { username = v; },
-            onEnter: v => registerPlayer(v),
+            onEnter: () => handleAuthSubmit(),
           }),
         }),
+        errorNode,
         Button({
           variant: 'primary',
           size: 'lg',
           block: true,
-          loading: registering,
-          onClick: () => registerPlayer(username),
-          children: 'Register',
+          loading: authing,
+          onClick: handleAuthSubmit,
+          children: btnLabel,
         }),
+        h('div', {
+          style: {
+            textAlign: 'center',
+            fontSize: 'var(--fs-xs)',
+            color: 'var(--color-text-mute)',
+            marginTop: 'var(--sp-1)',
+          },
+        },
+          toggleLabel,
+          h('span', {
+            style: {
+              color: 'var(--brand-teal-hi)',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            },
+            onClick: () => switchMode(isSignIn ? 'create' : 'signin'),
+          }, toggleAction),
+        ),
       ),
     });
   }
 
+  // ---- Create game card ----
   function buildCreateCard() {
     return Card({
       children: h('div', { class: 'stack' },
@@ -232,6 +334,7 @@ async function createGame() {
     });
   }
 
+  // ---- Games list ----
   function buildGamesList() {
     const { player } = store.get();
     const pid = player?.player_id;
@@ -255,7 +358,6 @@ async function createGame() {
       );
     }
 
-    // Sort: waiting → active → finished, then newest by id desc
     const order = { waiting: 0, active: 1, finished: 2 };
     const sorted = [...games].sort((a, b) => {
       const oa = order[a.status] ?? 9;
@@ -275,27 +377,41 @@ async function createGame() {
     );
   }
 
+  // ---- Main build ----
   function build() {
     const { player, myStats } = store.get();
 
+    // Not signed in — show auth card only
     if (!player) {
-      // Registration-only view
       return h('div', { class: 'screen screen--narrow fade-in' },
         h('div', { class: 'screen__header' },
           h('h1', {}, 'Lobby'),
-          h('div', { class: 'subtitle' }, 'First things first — let\'s register you.'),
+          h('div', { class: 'subtitle' },
+            authMode === 'signin'
+              ? 'Sign in to join or create games.'
+              : 'Create an account to start playing.',
+          ),
         ),
-        buildRegistrationCard(),
+        buildAuthCard(),
       );
     }
 
+    // Signed in — full lobby view
     return h('div', { class: 'screen fade-in' },
       h('div', { class: 'screen__header row-between' },
         h('div', {},
           h('h1', {}, 'Lobby'),
           h('div', { class: 'subtitle' }, 'Browse games, join one, or create your own.'),
         ),
-        Identity({ name: player.username, me: true, large: true }),
+        h('div', { class: 'row' },
+          Identity({ name: player.username, me: true, large: true }),
+          Button({
+            variant: 'ghost',
+            size: 'sm',
+            onClick: signOut,
+            children: 'Sign out',
+          }),
+        ),
       ),
 
       h('div', { class: 'lobby-grid' },
@@ -337,8 +453,5 @@ async function createGame() {
   if (player) {
     refreshGames();
     refreshStats();
-    // Note: no auto-polling. The user refreshes the games list manually via the
-    // Refresh button. This avoids constant DOM rebuilds that disrupt interaction
-    // (hover states, cursor position, focus) every couple seconds.
   }
 }
