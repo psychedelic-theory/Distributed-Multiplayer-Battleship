@@ -9,13 +9,16 @@ import { Button } from '../ui/Button.js';
 import { store } from '../../js/state/store.js';
 import { session } from '../../js/state/session.js';
 import { toast } from '../../js/utils/toast.js';
+import { getTheme, toggleTheme } from '../../js/utils/theme.js';
 
 /**
  * Header — reads from store directly.
- * Shows brand, ServerPill (with disconnect), and Identity if present.
+ * Shows brand, ServerPill (with disconnect), Identity if present,
+ * and a light/dark theme toggle.
  */
 export function Header() {
   const { serverUrl, player, screen } = store.get();
+  const theme = getTheme();
 
   const onDisconnect = () => {
     session.stopPolling();
@@ -44,6 +47,11 @@ export function Header() {
     store.set({ screen: 'lobby' });
   };
 
+  const onToggleTheme = () => {
+    toggleTheme();
+    store.set({});
+  };
+
   return h('header', { class: 'app-header' },
     h('div', { class: 'app-header__brand' },
       h('div', { class: 'app-header__brand-mark' }, 'B'),
@@ -53,6 +61,13 @@ export function Header() {
       // Show "back to lobby" when deep in a game flow
       (screen === 'placement' || screen === 'game' || screen === 'end') &&
         Button({ variant: 'ghost', size: 'sm', onClick: onBackToLobby, children: '← Lobby' }),
+
+      Button({
+        variant: 'ghost',
+        size: 'sm',
+        onClick: onToggleTheme,
+        children: theme === 'dark' ? '☀️ Light' : '🌙 Dark',
+      }),
 
       serverUrl && ServerPill({ url: serverUrl, onDisconnect }),
 

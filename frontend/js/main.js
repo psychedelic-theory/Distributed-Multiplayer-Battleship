@@ -5,6 +5,7 @@
 import { h, mount, clear } from './utils/dom.js';
 import { store } from './state/store.js';
 import { session } from './state/session.js';
+import { applyTheme, getTheme } from './utils/theme.js';
 import { Header } from '../components/layout/Header.js';
 
 import * as connect from './screens/connect.js';
@@ -31,6 +32,7 @@ function headerKey(state) {
     serverUrl: state.serverUrl,
     playerName: state.player?.username || null,
     playerId: state.player?.player_id || null,
+    theme: getTheme(),
   });
 }
 
@@ -96,6 +98,8 @@ function validateInitialState() {
 }
 
 function boot() {
+  applyTheme(getTheme());
+
   const app = document.getElementById('app');
   if (!app) { console.error('[main] #app not found'); return; }
 
