@@ -221,3 +221,30 @@
 @media (max-width: 900px) {
   .placement-layout { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================================
+   Light mode readability fixes
+   ========================================================================== */
+
+   :root[data-theme="light"] .screen__header h1 {
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    color: var(--navy-950);
+    text-shadow: none;
+    opacity: 1;
+  }
+  
+  :root[data-theme="light"] .screen__header .subtitle {
+    color: var(--navy-800);
+    opacity: 1;
+  }
+  
+  :root[data-theme="light"] .lobby-section-head .count {
+    color: var(--navy-800);
+    opacity: 1;
+  }
+  
+  :root[data-theme="light"] .lobby-section-head {
+    border-bottom-color: rgba(10,15,30,0.35);
+  }
