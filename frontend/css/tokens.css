@@ -127,6 +127,8 @@
     --shadow-sm: 0 1px 2px rgba(10,15,30,0.12);
     --shadow-md: 0 4px 14px rgba(10,15,30,0.14);
     --shadow-lg: 0 18px 40px rgba(10,15,30,0.16);
+
+    --color-text-label: var(--navy-800);
   
     /* Glass */
     --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240,244,252,0.85));
