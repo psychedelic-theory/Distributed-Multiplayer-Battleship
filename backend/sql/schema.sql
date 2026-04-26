@@ -37,10 +37,11 @@ CREATE TABLE IF NOT EXISTS game_players (
     UNIQUE (game_id, turn_order)
 );
 
--- Ships: exactly 3 single-cell ships per player per game
+-- Ships: 3 multi-cell ships per player (ship_index: 0=Battleship/5, 1=Cruiser/3, 2=Destroyer/2)
 CREATE TABLE IF NOT EXISTS ships (
     game_id     INT NOT NULL,
     player_id   INT NOT NULL,
+    ship_index  INT NOT NULL DEFAULT 0,
     row         INT NOT NULL,
     col         INT NOT NULL,
     PRIMARY KEY (game_id, player_id, row, col),
@@ -62,4 +63,7 @@ CREATE TABLE IF NOT EXISTS moves (
 -- Index for fast move lookups
 CREATE INDEX IF NOT EXISTS idx_moves_game ON moves(game_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_ships_game_player ON ships(game_id, player_id);
+
+-- Migration: add ship_index to existing ships tables (safe to run repeatedly)
+ALTER TABLE ships ADD COLUMN IF NOT EXISTS ship_index INT NOT NULL DEFAULT 0;
 

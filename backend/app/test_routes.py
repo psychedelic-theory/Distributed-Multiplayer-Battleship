@@ -75,34 +75,37 @@ def _normalize_player_id(body):
 
 def _normalize_ship_cells(ships, gs):
     """
-    Parse ship payload into a flat list of (row, col) cells.
+    Parse ship payload into a list of (ship_index, row, col) tuples.
 
-    Accepted ship element format:
-      - {"row": <int>, "col": <int>}
+    Accepted element format: {"row": <int>, "col": <int>, "ship_index": <int 0-2>}
+    Total must be 10 cells: ship 0=5 cells, ship 1=3 cells, ship 2=2 cells.
     """
-    if not isinstance(ships, list) or not ships:
-        return None, "ships must be a non-empty array"
+    SHIP_SIZES = [5, 3, 2]
+    TOTAL_CELLS = sum(SHIP_SIZES)
 
-    coords = []
+    if not isinstance(ships, list) or len(ships) != TOTAL_CELLS:
+        return None, f"Exactly {TOTAL_CELLS} ship cells are required"
+
+    cells = []
     for ship in ships:
         if not isinstance(ship, dict):
             return None, "Each ship must be an object"
-
         r = ship.get("row")
         c = ship.get("col")
+        si = ship.get("ship_index", 0)
         if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
             return None, "Each ship must have integer row and col"
+        if not isinstance(si, int) or si not in (0, 1, 2):
+            return None, "ship_index must be 0, 1, or 2"
         if not (0 <= r < gs and 0 <= c < gs):
             return None, f"Ship coordinate ({r},{c}) is out of bounds"
-        coords.append((r, c))
+        cells.append((si, r, c))
 
-    if len(coords) != 3:
-        return None, "Exactly 3 ship cells are required"
-
+    coords = [(r, c) for _, r, c in cells]
     if len(set(coords)) != len(coords):
         return None, "Ships cannot overlap"
 
-    return coords, None
+    return cells, None
 
 
 # ---------------------------------------------------------------------------
@@ -162,10 +165,10 @@ def place_ships_test_mode(game_id):
                 "DELETE FROM ships WHERE game_id=%s AND player_id=%s", (game_id, player_id)
             )
 
-            for r, c in coords:
+            for si, r, c in coords:
                 cur.execute(
-                    "INSERT INTO ships (game_id, player_id, row, col) VALUES (%s,%s,%s,%s)",
-                    (game_id, player_id, r, c),
+                    "INSERT INTO ships (game_id, player_id, ship_index, row, col) VALUES (%s,%s,%s,%s,%s)",
+                    (game_id, player_id, si, r, c),
                 )
 
             cur.execute(
