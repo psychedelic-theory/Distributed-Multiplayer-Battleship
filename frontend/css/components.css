@@ -668,3 +668,27 @@
   background: var(--navy-100);
   color: var(--navy-900);
 }
+
+[data-theme="light"] .badge--live {
+  color: #166534;
+  border-color: rgba(22,101,52,0.40);
+  background: rgba(22,101,52,0.10);
+}
+
+[data-theme="light"] .badge--waiting {
+  color: #92400e;
+  border-color: rgba(146,64,14,0.40);
+  background: rgba(146,64,14,0.10);
+}
+
+[data-theme="light"] .badge--error {
+  color: #b91c1c;
+  border-color: rgba(185,28,28,0.40);
+  background: rgba(185,28,28,0.10);
+}
+
+[data-theme="light"] .badge--full {
+  color: #0f766e;
+  border-color: rgba(15,118,110,0.40);
+  background: rgba(15,118,110,0.10);
+}
