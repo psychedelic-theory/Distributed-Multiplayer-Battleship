@@ -13,6 +13,16 @@
     rel="stylesheet"
   />
 
+  <!-- Prevent theme flash: apply stored/system preference before first paint -->
+  <script>
+    (function () {
+      var stored = null;
+      try { stored = JSON.parse(localStorage.getItem('battleship.v1.theme')); } catch (_) {}
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+
   <!-- Styles (load order matters: tokens → base → layout → components → board → animations) -->
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/base.css" />

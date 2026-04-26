@@ -221,3 +221,32 @@
 @media (max-width: 900px) {
   .placement-layout { grid-template-columns: 1fr; }
 }
+
+/* ----- Light mode overrides ----- */
+[data-theme="light"] .app-header {
+  background: rgba(238,240,248,0.80);
+}
+
+/* Gradient headings use --navy-050 (=bg) as their light stop — invisible on light bg.
+   Override to start from a dark navy instead. */
+[data-theme="light"] .screen__header h1 {
+  background: linear-gradient(135deg, var(--navy-800) 0%, var(--brand-teal) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-theme="light"] .connect-hero h1 {
+  background: linear-gradient(135deg, var(--navy-800) 0%, var(--brand-gold) 50%, var(--brand-red) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Floating theme-toggle shown on the connect screen (no full header there) */
+.connect-toolbar {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-6);
+  z-index: 10;
+}
