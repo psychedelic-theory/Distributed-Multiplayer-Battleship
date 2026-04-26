@@ -4,11 +4,14 @@
 
 import { storage } from '../utils/storage.js';
 
-const PERSIST_KEYS = ['serverUrl', 'player', 'recentServers'];
+const PERSIST_KEYS = ['serverUrl', 'player', 'recentServers', 'theme'];
 
 const initialState = {
   // Navigation
   screen: 'connect',          // connect | lobby | placement | game | end
+
+  // Theme — persisted; falls back to OS preference on first load
+  theme: window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark',
 
   // Connection
   serverUrl: null,

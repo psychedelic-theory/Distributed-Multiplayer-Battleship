@@ -9,6 +9,7 @@ import { Button } from '../ui/Button.js';
 import { store } from '../../js/state/store.js';
 import { session } from '../../js/state/session.js';
 import { toast } from '../../js/utils/toast.js';
+import { ThemeToggle } from '../ui/ThemeToggle.js';
 
 /**
  * Header — reads from store directly.
@@ -57,6 +58,8 @@ export function Header() {
       serverUrl && ServerPill({ url: serverUrl, onDisconnect }),
 
       player && Identity({ name: player.username, me: true }),
+
+      ThemeToggle(),
     ),
   );
 }

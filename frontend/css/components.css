@@ -623,3 +623,48 @@
 .row-sm  { display: flex; align-items: center; gap: var(--sp-2); }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .spacer  { flex: 1; }
+
+/* ----- Icon-only button ----- */
+.btn--icon {
+  padding: var(--sp-2);
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+/* ----- Theme toggle icon animation ----- */
+.theme-toggle__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: theme-icon-in var(--dur-base) var(--ease-spring);
+}
+
+@keyframes theme-icon-in {
+  from { opacity: 0; transform: rotate(-45deg) scale(0.8); }
+  to   { opacity: 1; transform: rotate(0deg)   scale(1); }
+}
+
+/* ----- Light mode component overrides ----- */
+[data-theme="light"] .toast {
+  background: rgba(238,240,248,0.92);
+  color: var(--color-text);
+}
+
+[data-theme="light"] .modal-backdrop {
+  background: rgba(180,186,219,0.65);
+}
+
+[data-theme="light"] .modal {
+  background: rgba(238,240,248,0.97);
+}
+
+/* badge--finished uses --navy-300 directly; override for readable contrast on light bg */
+[data-theme="light"] .badge--finished {
+  color: var(--navy-600);
+}
+
+[data-theme="light"] .select option {
+  background: var(--navy-100);
+  color: var(--navy-900);
+}

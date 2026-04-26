@@ -5,7 +5,9 @@
 import { h, mount, clear } from './utils/dom.js';
 import { store } from './state/store.js';
 import { session } from './state/session.js';
+import { initTheme } from './utils/theme.js';
 import { Header } from '../components/layout/Header.js';
+import { ThemeToggle } from '../components/ui/ThemeToggle.js';
 
 import * as connect from './screens/connect.js';
 import * as lobby from './screens/lobby.js';
@@ -31,6 +33,7 @@ function headerKey(state) {
     serverUrl: state.serverUrl,
     playerName: state.player?.username || null,
     playerId: state.player?.player_id || null,
+    theme: state.theme,
   });
 }
 
@@ -41,9 +44,10 @@ function renderHeader(force = false) {
   if (!force && key === lastHeaderKey) return;
   lastHeaderKey = key;
 
-  // Hide header on the connect screen — it has its own hero treatment.
+  // Connect screen has its own hero treatment — show a floating toolbar with
+  // just the theme toggle instead of the full header.
   if (state.screen === 'connect') {
-    clear(headerMount);
+    mount(headerMount, h('div', { class: 'connect-toolbar' }, ThemeToggle()));
     return;
   }
   mount(headerMount, Header());
@@ -96,6 +100,8 @@ function validateInitialState() {
 }
 
 function boot() {
+  initTheme();
+
   const app = document.getElementById('app');
   if (!app) { console.error('[main] #app not found'); return; }
 
