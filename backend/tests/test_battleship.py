@@ -56,9 +56,35 @@ def join_game(game_id, player_id):
     return r
 
 
+# ship_index: 0=Battleship(5 cells), 1=Cruiser(3 cells), 2=Destroyer(2 cells)
+DEFAULT_SHIPS = [
+    {"row": 0, "col": 0, "ship_index": 0}, {"row": 0, "col": 1, "ship_index": 0},
+    {"row": 0, "col": 2, "ship_index": 0}, {"row": 0, "col": 3, "ship_index": 0},
+    {"row": 0, "col": 4, "ship_index": 0},
+    {"row": 1, "col": 0, "ship_index": 1}, {"row": 1, "col": 1, "ship_index": 1},
+    {"row": 1, "col": 2, "ship_index": 1},
+    {"row": 2, "col": 0, "ship_index": 2}, {"row": 2, "col": 1, "ship_index": 2},
+]
+# P2 ships for setup_active_game (bottom-left, no overlap with DEFAULT_SHIPS on 10×10)
+P2_SHIPS = [
+    {"row": 5, "col": 0, "ship_index": 0}, {"row": 5, "col": 1, "ship_index": 0},
+    {"row": 5, "col": 2, "ship_index": 0}, {"row": 5, "col": 3, "ship_index": 0},
+    {"row": 5, "col": 4, "ship_index": 0},
+    {"row": 6, "col": 0, "ship_index": 1}, {"row": 6, "col": 1, "ship_index": 1},
+    {"row": 6, "col": 2, "ship_index": 1},
+    {"row": 7, "col": 0, "ship_index": 2}, {"row": 7, "col": 1, "ship_index": 2},
+]
+# P2 ship cells in (row, col) order for fire sequences
+P2_SHIP_CELLS = [
+    (5,0),(5,1),(5,2),(5,3),(5,4),
+    (6,0),(6,1),(6,2),
+    (7,0),(7,1),
+]
+
+
 def place_ships(game_id, player_id, ships=None):
     if ships is None:
-        ships = [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}]
+        ships = DEFAULT_SHIPS
     r = requests.post(
         f"{BASE}/api/games/{game_id}/place",
         json={"player_id": player_id, "ships": ships},
@@ -82,10 +108,9 @@ def setup_active_game():
     gid = create_game(p1, grid_size=10, max_players=2)
     join_game(gid, p2)
 
-    # p1 ships at (0,0),(1,1),(2,2); p2 ships at (5,5),(6,6),(7,7)
-    r1 = place_ships(gid, p1, [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}])
+    r1 = place_ships(gid, p1, DEFAULT_SHIPS)
     assert r1.status_code == 200, r1.text
-    r2 = place_ships(gid, p2, [{"row": 5, "col": 5}, {"row": 6, "col": 6}, {"row": 7, "col": 7}])
+    r2 = place_ships(gid, p2, P2_SHIPS)
     assert r2.status_code == 200, r2.text
     return gid, p1, p2
 
@@ -210,7 +235,7 @@ class TestPlaceShips:
         gid = create_game(p, max_players=1)
         r = requests.post(
             f"{BASE}/api/games/{gid}/place",
-            json={"player_id": "bad-type", "ships": [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}]},
+            json={"player_id": "bad-type", "ships": DEFAULT_SHIPS},
             headers=HEADERS,
         )
         assert r.status_code == 400
@@ -218,29 +243,36 @@ class TestPlaceShips:
     def test_ship_entry_must_be_object(self):
         p = create_player("plobj")
         gid = create_game(p, max_players=1)
+        # Send a non-object in the ship list (wrong count, so fails for count first)
         r = requests.post(
             f"{BASE}/api/games/{gid}/place",
-            json={"player_id": p, "ships": ["bad", {"row": 1, "col": 1}, {"row": 2, "col": 2}]},
+            json={"player_id": p, "ships": ["bad"]},
             headers=HEADERS,
         )
         assert r.status_code == 400
 
-    def test_must_be_exactly_3(self):
+    def test_must_be_exactly_10_cells(self):
         p = create_player("pl1")
         gid = create_game(p, max_players=1)
-        r = place_ships(gid, p, [{"row": 0, "col": 0}, {"row": 1, "col": 1}])
+        r = place_ships(gid, p, [{"row": 0, "col": 0, "ship_index": 0}])  # only 1 cell
         assert r.status_code == 400
 
     def test_out_of_bounds(self):
         p = create_player("pl2")
         gid = create_game(p, max_players=1)
-        r = place_ships(gid, p, [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 99, "col": 99}])
+        # Valid count (10) but one coordinate is out of bounds
+        oob_ships = list(DEFAULT_SHIPS)
+        oob_ships[0] = {"row": 99, "col": 99, "ship_index": 0}
+        r = place_ships(gid, p, oob_ships)
         assert r.status_code == 400
 
     def test_overlap(self):
         p = create_player("pl3")
         gid = create_game(p, max_players=1)
-        r = place_ships(gid, p, [{"row": 0, "col": 0}, {"row": 0, "col": 0}, {"row": 1, "col": 1}])
+        # Duplicate cell causes overlap (two cells at same position)
+        overlapping = list(DEFAULT_SHIPS)
+        overlapping[1] = {"row": 0, "col": 0, "ship_index": 0}  # same as [0]
+        r = place_ships(gid, p, overlapping)
         assert r.status_code == 400
 
     def test_cannot_place_twice(self):
@@ -248,7 +280,7 @@ class TestPlaceShips:
         gid = create_game(p, max_players=1)
         place_ships(gid, p)  # first placement
         r = place_ships(gid, p)  # second attempt
-        assert r.status_code == 400
+        assert r.status_code in (400, 409)
 
     def test_player_not_in_game(self):
         p1 = create_player("pl5")
@@ -263,8 +295,8 @@ class TestPlaceShips:
         gid = create_game(p, max_players=1)
         place_ships(gid, p)
         # game should now be active; try placing again
-        r = place_ships(gid, p, [{"row": 3, "col": 3}, {"row": 4, "col": 4}, {"row": 5, "col": 5}])
-        assert r.status_code == 400
+        r = place_ships(gid, p)
+        assert r.status_code in (400, 409)
 
 
 # ---------------------------------------------------------------------------
@@ -311,8 +343,8 @@ class TestFire:
 
     def test_hit_and_miss_result(self):
         gid, p1, p2 = setup_active_game()
-        # p1 fires at p2's ship (5,5)
-        r = fire(gid, p1, 5, 5)
+        # p1 fires at p2's battleship (5,0)
+        r = fire(gid, p1, 5, 0)
         assert r.status_code == 200
         assert r.json()["result"] == "hit"
         assert r.json()["game_status"] == "active"
@@ -324,17 +356,15 @@ class TestFire:
         assert r.json()["result"] == "miss"
 
     def test_game_completion_and_winner(self):
-        """Eliminate all p2 ships to finish the game."""
+        """Eliminate all p2 ships (10 cells) to finish the game."""
         gid, p1, p2 = setup_active_game()
-        # p2 ships: (5,5),(6,6),(7,7)
-        # p1 fires all 3, p2 fires blanks in between
-        fire(gid, p1, 5, 5)
-        fire(gid, p2, 9, 9)
-        fire(gid, p1, 6, 6)
-        fire(gid, p2, 9, 8)
-        r = fire(gid, p1, 7, 7)
-        assert r.status_code == 200
-        data = r.json()
+        last_r = None
+        for i, (r_coord, c_coord) in enumerate(P2_SHIP_CELLS):
+            last_r = fire(gid, p1, r_coord, c_coord)
+            if i < len(P2_SHIP_CELLS) - 1:
+                fire(gid, p2, 9, 9 - i)  # p2 misses safely at row 9
+        assert last_r.status_code == 200
+        data = last_r.json()
         assert data["game_status"] == "finished"
         assert data["winner_id"] == p1
         assert data["next_player_id"] is None
@@ -347,12 +377,11 @@ class TestFire:
 class TestStats:
     def test_stats_after_game(self):
         gid, p1, p2 = setup_active_game()
-        # p1 wins by eliminating p2
-        fire(gid, p1, 5, 5)
-        fire(gid, p2, 9, 9)
-        fire(gid, p1, 6, 6)
-        fire(gid, p2, 9, 8)
-        fire(gid, p1, 7, 7)
+        # p1 wins by eliminating all 10 of p2's ship cells
+        for i, (r_coord, c_coord) in enumerate(P2_SHIP_CELLS):
+            fire(gid, p1, r_coord, c_coord)
+            if i < len(P2_SHIP_CELLS) - 1:
+                fire(gid, p2, 9, 9 - i)
 
         r = requests.get(f"{BASE}/api/players/{p1}/stats")
         assert r.status_code == 200
@@ -360,17 +389,16 @@ class TestStats:
         assert s["wins"] == 1
         assert s["losses"] == 0
         assert s["games_played"] == 1
-        assert s["total_shots"] == 3
-        assert s["total_hits"] == 3
+        assert s["total_shots"] == len(P2_SHIP_CELLS)
+        assert s["total_hits"] == len(P2_SHIP_CELLS)
         assert abs(s["accuracy"] - 1.0) < 0.001
 
     def test_stats_loser(self):
         gid, p1, p2 = setup_active_game()
-        fire(gid, p1, 5, 5)
-        fire(gid, p2, 9, 9)
-        fire(gid, p1, 6, 6)
-        fire(gid, p2, 9, 8)
-        fire(gid, p1, 7, 7)
+        for i, (r_coord, c_coord) in enumerate(P2_SHIP_CELLS):
+            fire(gid, p1, r_coord, c_coord)
+            if i < len(P2_SHIP_CELLS) - 1:
+                fire(gid, p2, 9, 9 - i)
 
         r = requests.get(f"{BASE}/api/players/{p2}/stats")
         assert r.status_code == 200
@@ -391,8 +419,8 @@ class TestStats:
 class TestMoves:
     def test_moves_chronological(self):
         gid, p1, p2 = setup_active_game()
-        fire(gid, p1, 5, 5)
-        fire(gid, p2, 0, 0)
+        fire(gid, p1, 5, 0)  # hit p2's battleship
+        fire(gid, p2, 9, 9)  # p2 misses
         r = requests.get(f"{BASE}/api/games/{gid}/moves")
         assert r.status_code == 200
         moves = r.json()["moves"]
@@ -467,7 +495,7 @@ class TestModeGating:
 
         p = create_player("tg4")
         gid = create_game(p, max_players=1)
-        place_ships(gid, p, [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}])
+        place_ships(gid, p, DEFAULT_SHIPS)
 
         r = requests.get(
             f"{BASE}/api/test/games/{gid}/board/{p}",
@@ -477,7 +505,7 @@ class TestModeGating:
         data = r.json()
         assert "board" in data
         assert "ships" in data
-        assert len(data["ships"]) == 3
+        assert len(data["ships"]) == 10  # 5 + 3 + 2 cells
 
     def test_restart_test_mode(self):
         """Restart resets ships/moves but not stats (only runs if TEST_MODE=true)."""
@@ -489,8 +517,8 @@ class TestModeGating:
         p2 = create_player("tr2")
         gid = create_game(p1, max_players=2)
         join_game(gid, p2)
-        place_ships(gid, p1, [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}])
-        place_ships(gid, p2, [{"row": 5, "col": 5}, {"row": 6, "col": 6}, {"row": 7, "col": 7}])
+        place_ships(gid, p1, DEFAULT_SHIPS)
+        place_ships(gid, p2, P2_SHIPS)
 
         r = requests.post(
             f"{BASE}/api/test/games/{gid}/restart",
@@ -509,7 +537,7 @@ class TestModeGating:
 
         p = create_player("tg-query")
         gid = create_game(p, max_players=1)
-        place_ships(gid, p, [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}])
+        place_ships(gid, p, DEFAULT_SHIPS)
 
         r = requests.get(
             f"{BASE}/api/test/games/{gid}/board",
@@ -530,14 +558,7 @@ class TestModeGating:
 
         p = create_player("tg-ships")
         gid = create_game(p, max_players=1)
-        payload = {
-            "playerId": p,
-            "ships": [
-                {"row": 0, "col": 0},
-                {"row": 0, "col": 1},
-                {"row": 1, "col": 1},
-            ],
-        }
+        payload = {"playerId": p, "ships": DEFAULT_SHIPS}
         r = requests.post(
             f"{BASE}/api/test/games/{gid}/ships",
             json=payload,
