@@ -66,4 +66,3 @@ CREATE INDEX IF NOT EXISTS idx_ships_game_player ON ships(game_id, player_id);
 
 -- Migration: add ship_index to existing ships tables (safe to run repeatedly)
 ALTER TABLE ships ADD COLUMN IF NOT EXISTS ship_index INT NOT NULL DEFAULT 0;
-
