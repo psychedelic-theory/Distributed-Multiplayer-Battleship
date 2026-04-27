@@ -17,8 +17,7 @@ import { ThemeToggle } from '../ui/ThemeToggle.js';
  * and a light/dark theme toggle.
  */
 export function Header() {
-  const { serverUrl, player, screen } = store.get();
-  const theme = getTheme();
+  const { serverUrl, player, screen, theme } = store.get();
 
   const onDisconnect = () => {
     session.stopPolling();
@@ -37,8 +36,6 @@ export function Header() {
     session.stopPolling();
     store.resetGame();
     store.set({ player: null, screen: 'lobby' });
-    // If we're signed out, reroute to lobby which will prompt for registration
-    store.set({ screen: 'lobby' });
   };
 
   const onBackToLobby = () => {
@@ -48,8 +45,8 @@ export function Header() {
   };
 
   const onToggleTheme = () => {
-    toggleTheme();
-    store.set({});
+    const current = store.get().theme;
+    store.set({ theme: current === 'dark' ? 'light' : 'dark' });
   };
 
   return h('header', { class: 'app-header' },
