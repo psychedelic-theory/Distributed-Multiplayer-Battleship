@@ -54,10 +54,38 @@ TIMEOUT       = 15   # seconds per request
 MAX_RAW       = 182  # 91 tests * 2 pts each
 
 # Canonical ship layouts — same every time so tests are deterministic.
-# P1 ships: rows 0,1,2 col 0,1,2
-# P2 ships: rows 5,6,7 col 5,6,7  (well away from P1)
-P1_SHIPS = [{"row": 0, "col": 0}, {"row": 1, "col": 1}, {"row": 2, "col": 2}]
-P2_SHIPS = [{"row": 5, "col": 5}, {"row": 6, "col": 6}, {"row": 7, "col": 7}]
+# ship_index: 0=Battleship(5 cells), 1=Cruiser(3 cells), 2=Destroyer(2 cells)
+# P1: top-left area; P2: bottom-right area (no overlap on 8×8 grid)
+P1_SHIPS = [
+    # Battleship (5 cells) horizontal at row 0
+    {"row": 0, "col": 0, "ship_index": 0},
+    {"row": 0, "col": 1, "ship_index": 0},
+    {"row": 0, "col": 2, "ship_index": 0},
+    {"row": 0, "col": 3, "ship_index": 0},
+    {"row": 0, "col": 4, "ship_index": 0},
+    # Cruiser (3 cells) horizontal at row 1
+    {"row": 1, "col": 0, "ship_index": 1},
+    {"row": 1, "col": 1, "ship_index": 1},
+    {"row": 1, "col": 2, "ship_index": 1},
+    # Destroyer (2 cells) horizontal at row 2
+    {"row": 2, "col": 0, "ship_index": 2},
+    {"row": 2, "col": 1, "ship_index": 2},
+]
+P2_SHIPS = [
+    # Battleship (5 cells) horizontal at row 7
+    {"row": 7, "col": 3, "ship_index": 0},
+    {"row": 7, "col": 4, "ship_index": 0},
+    {"row": 7, "col": 5, "ship_index": 0},
+    {"row": 7, "col": 6, "ship_index": 0},
+    {"row": 7, "col": 7, "ship_index": 0},
+    # Cruiser (3 cells) horizontal at row 6
+    {"row": 6, "col": 5, "ship_index": 1},
+    {"row": 6, "col": 6, "ship_index": 1},
+    {"row": 6, "col": 7, "ship_index": 1},
+    # Destroyer (2 cells) horizontal at row 5
+    {"row": 5, "col": 6, "ship_index": 2},
+    {"row": 5, "col": 7, "ship_index": 2},
+]
 
 # Unique suffix counter so usernames never collide across tests
 _uid_counter = 0

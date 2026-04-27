@@ -410,8 +410,12 @@ def place_ships(game_id):
     if not isinstance(player_id, int):
         return err("player_id must be an integer", 400)
 
-    if not isinstance(ships, list) or len(ships) != 3:
-        return err("ships must be an array of exactly 3 ship positions", 400)
+    # ship_index: 0=Battleship(5 cells), 1=Cruiser(3 cells), 2=Destroyer(2 cells)
+    SHIP_SIZES = [5, 3, 2]
+    TOTAL_CELLS = sum(SHIP_SIZES)  # 10
+
+    if not isinstance(ships, list) or len(ships) != TOTAL_CELLS:
+        return err(f"ships must be an array of exactly {TOTAL_CELLS} ship cells", 400)
 
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -441,34 +445,61 @@ def place_ships(game_id):
             if game["status"] != "waiting":
                 return err("Ship placement is only allowed during waiting state", 400)
 
-            # Validate ship coordinates
             gs = game["grid_size"]
-            coords = []
+
+            # Group cells by ship_index and validate each
+            ships_by_index = {0: [], 1: [], 2: []}
             for s in ships:
                 if not isinstance(s, dict):
-                    return err("Each ship must be an object with integer row and col", 400)
-
+                    return err("Each ship cell must be an object with row, col, and ship_index", 400)
                 r = s.get("row")
                 c = s.get("col")
-
-                if r is None or c is None or not isinstance(r, int) or not isinstance(c, int):
-                    return err("Each ship must have integer row and col", 400)
-
+                si = s.get("ship_index")
+                if r is None or c is None or si is None:
+                    return err("Each ship cell must have integer row, col, and ship_index", 400)
+                if not isinstance(r, int) or not isinstance(c, int) or not isinstance(si, int):
+                    return err("row, col, and ship_index must be integers", 400)
+                if si not in ships_by_index:
+                    return err("ship_index must be 0, 1, or 2", 400)
                 if not (0 <= r < gs and 0 <= c < gs):
                     return err(f"Ship coordinate ({r},{c}) is out of bounds for grid size {gs}", 400)
+                ships_by_index[si].append((r, c))
 
-                coords.append((r, c))
+            # Validate each ship has the correct number of cells
+            for si, expected in enumerate(SHIP_SIZES):
+                if len(ships_by_index[si]) != expected:
+                    return err(
+                        f"Ship {si} must have exactly {expected} cells, got {len(ships_by_index[si])}",
+                        400,
+                    )
 
-            # No overlapping ships
-            if len(set(coords)) != len(coords):
+            # Validate each ship is contiguous in a straight line
+            for si, cells in ships_by_index.items():
+                rows = sorted(set(r for r, c in cells))
+                cols = sorted(set(c for r, c in cells))
+                if len(rows) == 1:
+                    expected_cols = list(range(cols[0], cols[0] + len(cells)))
+                    if cols != expected_cols:
+                        return err(f"Ship {si} cells must be contiguous", 400)
+                elif len(cols) == 1:
+                    expected_rows = list(range(rows[0], rows[0] + len(cells)))
+                    if rows != expected_rows:
+                        return err(f"Ship {si} cells must be contiguous", 400)
+                else:
+                    return err(f"Ship {si} must be placed in a straight horizontal or vertical line", 400)
+
+            # No overlapping cells across ships
+            all_coords = [coord for cells in ships_by_index.values() for coord in cells]
+            if len(set(all_coords)) != len(all_coords):
                 return err("Ships cannot overlap", 400)
 
-            # Insert ships
-            for r, c in coords:
-                cur.execute(
-                    "INSERT INTO ships (game_id, player_id, row, col) VALUES (%s, %s, %s, %s)",
-                    (game_id, player_id, r, c),
-                )
+            # Insert all ship cells
+            for si, cells in ships_by_index.items():
+                for r, c in cells:
+                    cur.execute(
+                        "INSERT INTO ships (game_id, player_id, ship_index, row, col) VALUES (%s, %s, %s, %s, %s)",
+                        (game_id, player_id, si, r, c),
+                    )
 
             # Mark ships placed
             cur.execute(

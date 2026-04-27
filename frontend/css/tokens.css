@@ -128,8 +128,140 @@
     --shadow-md: 0 4px 14px rgba(10,15,30,0.14);
     --shadow-lg: 0 18px 40px rgba(10,15,30,0.16);
 
-    --color-text-label: var(--navy-950);
-  
-    /* Glass */
-    --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240,244,252,0.85));
-  }
+  /* ----- Color: Hasbro accents ----- */
+  --brand-red:    #e6333d;
+  --brand-red-hi: #ff4a55;
+  --brand-gold:   #f0b32a;
+  --brand-gold-hi:#ffcb54;
+  --brand-teal:   #38c7c0;
+  --brand-teal-hi:#67e9e3;
+
+  /* ----- Semantic ----- */
+  --color-bg:        var(--navy-950);
+  --color-bg-deep:   #03050a;
+  --color-surface:   rgba(255,255,255,0.04);
+  --color-surface-2: rgba(255,255,255,0.07);
+  --color-surface-3: rgba(255,255,255,0.10);
+  --color-border:    rgba(255,255,255,0.09);
+  --color-border-hi: rgba(255,255,255,0.18);
+  --color-text:      var(--navy-050);
+  --color-text-dim:  var(--navy-200);
+  --color-text-mute: var(--navy-300);
+
+  /* ----- State colors ----- */
+  --color-hit:     var(--brand-red);
+  --color-hit-hi:  var(--brand-red-hi);
+  --color-miss:    var(--navy-400);
+  --color-sunk:    #7a1722;
+  --color-ship:    var(--brand-gold);
+  --color-ship-hi: var(--brand-gold-hi);
+  --color-target:  var(--brand-teal);
+
+  --color-success: #3acf7e;
+  --color-warn:    var(--brand-gold);
+  --color-error:   var(--brand-red-hi);
+  --color-info:    var(--brand-teal);
+
+  /* ----- Typography ----- */
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --fs-xs:   0.75rem;
+  --fs-sm:   0.875rem;
+  --fs-base: 1rem;
+  --fs-md:   1.125rem;
+  --fs-lg:   1.375rem;
+  --fs-xl:   1.75rem;
+  --fs-2xl:  2.25rem;
+  --fs-3xl:  3rem;
+
+  --lh-tight:  1.15;
+  --lh-normal: 1.5;
+  --lh-loose:  1.7;
+
+  /* ----- Spacing ----- */
+  --sp-1:  0.25rem;
+  --sp-2:  0.5rem;
+  --sp-3:  0.75rem;
+  --sp-4:  1rem;
+  --sp-5:  1.25rem;
+  --sp-6:  1.5rem;
+  --sp-8:  2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+
+  /* ----- Radius ----- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  /* ----- Elevation ----- */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.25), 0 1px 1px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.18);
+  --shadow-lg: 0 18px 40px rgba(0,0,0,0.45), 0 6px 12px rgba(0,0,0,0.22);
+  --shadow-glow-red:  0 0 0 1px rgba(230,51,61,0.35), 0 8px 28px rgba(230,51,61,0.28);
+  --shadow-glow-gold: 0 0 0 1px rgba(240,179,42,0.35), 0 8px 28px rgba(240,179,42,0.24);
+  --shadow-glow-teal: 0 0 0 1px rgba(56,199,192,0.4), 0 8px 28px rgba(56,199,192,0.22);
+
+  /* ----- Glass ----- */
+  --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+  --glass-border: 1px solid var(--color-border);
+  --glass-blur: blur(14px) saturate(120%);
+
+  /* ----- Motion ----- */
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+  --dur-slow:   360ms;
+
+  /* ----- Layout ----- */
+  --content-max: 1280px;
+  --sidebar-w:   340px;
+  --header-h:    68px;
+  --cell-min:    32px;
+}
+
+/* ==========================================================================
+   Light Theme Overrides
+   ========================================================================== */
+
+[data-theme="light"] {
+  /* Backgrounds — pale navy-family, avoids glare of pure white */
+  --color-bg:        var(--navy-050);
+  --color-bg-deep:   var(--navy-100);
+
+  /* Surfaces — dark-on-light (flip from white-on-dark) */
+  --color-surface:   rgba(0,0,0,0.04);
+  --color-surface-2: rgba(0,0,0,0.07);
+  --color-surface-3: rgba(0,0,0,0.11);
+
+  /* Borders */
+  --color-border:    rgba(0,0,0,0.10);
+  --color-border-hi: rgba(0,0,0,0.22);
+
+  /* Text — navy-900 on navy-050 = ~16:1 contrast */
+  --color-text:      var(--navy-900);
+  --color-text-dim:  var(--navy-700);
+  --color-text-mute: var(--navy-600);
+
+  /* Game state — darker miss marker for light bg */
+  --color-miss:      var(--navy-500);
+
+  /* Glass — frosted white panels */
+  --glass-bg:    linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.48) 100%);
+  --glass-border: 1px solid var(--color-border);
+
+  /* Shadows — navy-tinted, lighter opacity */
+  --shadow-sm: 0 1px 2px rgba(10,15,30,0.10), 0 1px 1px rgba(10,15,30,0.06);
+  --shadow-md: 0 4px 14px rgba(10,15,30,0.12), 0 2px 4px rgba(10,15,30,0.08);
+  --shadow-lg: 0 18px 40px rgba(10,15,30,0.16), 0 6px 12px rgba(10,15,30,0.10);
+  --shadow-glow-red:  0 0 0 1px rgba(230,51,61,0.30),  0 8px 28px rgba(230,51,61,0.18);
+  --shadow-glow-gold: 0 0 0 1px rgba(200,140,10,0.30),  0 8px 28px rgba(200,140,10,0.16);
+  --shadow-glow-teal: 0 0 0 1px rgba(25,160,154,0.35),  0 8px 28px rgba(25,160,154,0.14);
+}

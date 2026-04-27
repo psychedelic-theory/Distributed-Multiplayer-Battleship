@@ -1,22 +1,14 @@
 // ==========================================================================
-// theme.js — light/dark mode handling
+// Theme — apply data-theme attribute and keep it in sync with store
 // ==========================================================================
 
-import { storage } from './storage.js';
+import { store } from '../state/store.js';
 
-const THEME_KEY = 'theme';
-
-export function getTheme() {
-  return storage.get(THEME_KEY, 'dark');
+function apply(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
 }
 
-export function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  storage.set(THEME_KEY, theme);
-}
-
-export function toggleTheme() {
-  const next = getTheme() === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-  return next;
+export function initTheme() {
+  apply(store.get().theme);
+  store.subscribe(state => apply(state.theme));
 }

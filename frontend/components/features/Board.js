@@ -44,6 +44,16 @@ export function Board({
   role = '',
   maxShips = 3,
 } = {}) {
+  // In placement mode, build a map of cell-key → shipIndex for color coding.
+  const shipMap = new Map();
+  if (mode === 'placement') {
+    for (const s of ships) {
+      if (s && typeof s.row === 'number' && typeof s.col === 'number') {
+        shipMap.set(keyOf(s.row, s.col), typeof s.shipIndex === 'number' ? s.shipIndex : 0);
+      }
+    }
+  }
+
   const shipSet = toSet(ships);
   const hitSet = toSet(hits);
   const missSet = toSet(misses);
@@ -74,9 +84,13 @@ export function Board({
       let clickable = false;
 
       if (mode === 'placement') {
-        // Placement: show placed ships as preview, allow toggling.
-        if (isShip) classes.push('cell--ship');
-        else classes.push('cell--placement-preview');
+        // Placement: show placed ships with per-type colors; empty cells get dashed preview style.
+        if (shipMap.has(k)) {
+          const si = shipMap.get(k);
+          classes.push('cell--ship', `cell--ship-${si}`);
+        } else {
+          classes.push('cell--placement-preview');
+        }
         clickable = true;
       } else if (mode === 'own') {
         // Own board: ships visible; hits overlay in red, misses in grey.
@@ -125,13 +139,14 @@ export function Board({
     attrs: { role: 'grid', 'aria-label': `${gridSize} by ${gridSize} board` },
   }, ...cells);
 
-  // Placement-mode footer: ship count
-  const footer = (mode === 'placement')
-    ? h('div', { class: 'row-between', style: { marginTop: 'var(--sp-2)', fontSize: 'var(--fs-xs)', color: 'var(--color-text-mute)' } },
-        h('span', {}, `Ships placed: ${ships.length}/${maxShips}`),
-        h('span', { style: { fontFamily: 'var(--font-mono)' } }, 'click a cell to toggle'),
-      )
-    : null;
+  // Placement-mode footer: unique ships placed count
+  const footer = (mode === 'placement') ? (() => {
+    const placedTypes = new Set(ships.map(s => s.shipIndex).filter(n => typeof n === 'number')).size;
+    return h('div', { class: 'row-between', style: { marginTop: 'var(--sp-2)', fontSize: 'var(--fs-xs)', color: 'var(--color-text-mute)' } },
+      h('span', {}, `${placedTypes}/3 ships placed`),
+      h('span', { style: { fontFamily: 'var(--font-mono)' } }, 'click to place · R to rotate'),
+    );
+  })() : null;
 
   return h('div', { class: 'board-shell' },
     header,
