@@ -378,6 +378,7 @@ export function render(mountEl) {
   function buildGamesList() {
     const { player } = store.get();
     const pid = player?.player_id;
+    const isStale = lastRefreshedAt && (Date.now() - lastRefreshedAt.getTime()) > 15000;
 
     if (loadingGames) return Loader({ label: 'Loading games…', center: true });
 
@@ -458,11 +459,11 @@ export function render(mountEl) {
                   : `${games.length} games`,
               ),
               Button({
-                variant: 'teal',
+                variant: isStale ? 'primary' : 'teal',
                 size: 'sm',
                 onClick: refreshGames,
                 disabled: loadingGames,
-                children: loadingGames ? 'Refreshing…' : '↻ Refresh',
+                children: loadingGames ? 'Refreshing…' : isStale ? '↻ Refresh (stale)' : '↻ Refresh',
               }),
             ),
           ),
