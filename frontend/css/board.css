@@ -2,56 +2,123 @@
    Board
    ========================================================================== */
 
-.board-shell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
+   .board-shell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  
+  .board-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+  .board-header__title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .board-header__role {
+    font-size: var(--fs-xs);
+    color: var(--color-text-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  
+  .board-wrap {
+    padding: var(--sp-4);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-md);
+    position: relative;
+  }
+  
+  .board-wrap--fireable {
+    border-color: rgba(56,199,192,0.45);
+    box-shadow: 0 0 0 1px rgba(56,199,192,0.35), var(--shadow-md);
+  }
+  
+  .board-wrap--dimmed { opacity: 0.72; }
+  
+  .board {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+  }
+  
+  .cell {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-hi);
+    border-radius: 4px;
+    position: relative;
+    display: grid;
+    place-items: center;
+    transition: all var(--dur-fast) var(--ease-out);
+    font-size: clamp(10px, 1.4vw, 14px);
+    font-family: var(--font-mono);
+    cursor: default;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Light mode base cells */
+  :root[data-theme="light"] .cell {
+    background: rgba(255,255,255,0.82);
+    border-color: rgba(10,15,30,0.38);
+    box-shadow: inset 0 0 0 1px rgba(10,15,30,0.08);
+  }
+  
+  :root[data-theme="light"] .board {
+    gap: 4px;
+  }
+  
+  :root[data-theme="light"] .board-wrap {
+    background: rgba(230,235,248,0.95);
+    border-color: rgba(10,15,30,0.28);
+  }
+  
+  .cell--interactive { cursor: pointer; }
+  .cell--interactive:hover {
+    background: rgba(56,199,192,0.12);
+    border-color: rgba(56,199,192,0.5);
+    transform: scale(1.03);
+    z-index: 2;
+  }
+  
+  .cell--ship {
+    background: linear-gradient(135deg, rgba(240,179,42,0.35), rgba(240,179,42,0.18));
+    border-color: rgba(240,179,42,0.55);
+    box-shadow: inset 0 0 6px rgba(240,179,42,0.3);
+  }
+  .cell--ship::before {
+    content: "";
+    width: 42%; height: 42%;
+    border-radius: 2px;
+    background: var(--brand-gold);
+    box-shadow: 0 0 6px rgba(240,179,42,0.6);
+  }
+  
+  .cell--placement-preview {
+    background: rgba(240,179,42,0.2);
+    border-color: rgba(240,179,42,0.4);
+    border-style: dashed;
+    cursor: pointer;
+  }
 
-.board-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
-.board-header__title {
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-.board-header__role {
-  font-size: var(--fs-xs);
-  color: var(--color-text-mute);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.board-wrap {
-  padding: var(--sp-4);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-md);
-  position: relative;
-}
-
-.board-wrap--fireable {
-  border-color: rgba(56,199,192,0.45);
-  box-shadow: 0 0 0 1px rgba(56,199,192,0.35), var(--shadow-md);
-}
-
-.board-wrap--dimmed { opacity: 0.72; }
-
-.board {
-  display: grid;
-  gap: 3px;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-}
+  /* ==========================================================================
+    Placement preview visible in light mode
+    ========================================================================== */
 
 .cell {
   background: rgba(255,255,255,0.03);

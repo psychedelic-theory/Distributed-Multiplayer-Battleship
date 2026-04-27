@@ -2,19 +2,131 @@
    Design Tokens — Modern Navy Hasbro with Glassmorphism
    ========================================================================== */
 
-:root {
-  /* ----- Color: Navy foundation ----- */
-  --navy-950: #05070d;
-  --navy-900: #0a0f1e;
-  --navy-800: #111830;
-  --navy-700: #1a2344;
-  --navy-600: #24305a;
-  --navy-500: #334074;
-  --navy-400: #4f5c96;
-  --navy-300: #7e8ac2;
-  --navy-200: #b3badb;
-  --navy-100: #dfe2f0;
-  --navy-050: #eef0f8;
+   :root {
+    /* ----- Color: Navy foundation ----- */
+    --navy-950: #05070d;
+    --navy-900: #0a0f1e;
+    --navy-800: #111830;
+    --navy-700: #1a2344;
+    --navy-600: #24305a;
+    --navy-500: #334074;
+    --navy-400: #4f5c96;
+    --navy-300: #7e8ac2;
+    --navy-200: #b3badb;
+    --navy-100: #dfe2f0;
+    --navy-050: #eef0f8;
+  
+    /* ----- Color: Hasbro accents ----- */
+    --brand-red:     #e6333d;
+    --brand-red-hi:  #ff4a55;
+    --brand-gold:    #f0b32a;
+    --brand-gold-hi: #ffcb54;
+    --brand-teal:    #38c7c0;
+    --brand-teal-hi: #67e9e3;
+  
+    /* ----- Semantic: Dark theme default ----- */
+    --color-bg:        var(--navy-950);
+    --color-bg-deep:   #03050a;
+    --color-surface:   rgba(255,255,255,0.04);
+    --color-surface-2: rgba(255,255,255,0.07);
+    --color-surface-3: rgba(255,255,255,0.10);
+    --color-border:    rgba(255,255,255,0.09);
+    --color-border-hi: rgba(255,255,255,0.18);
+    --color-text:      var(--navy-050);
+    --color-text-dim:  var(--navy-200);
+    --color-text-mute: var(--navy-300);
+  
+    /* ----- State colors ----- */
+    --color-hit:     var(--brand-red);
+    --color-hit-hi:  var(--brand-red-hi);
+    --color-miss:    var(--navy-400);
+    --color-sunk:    #7a1722;
+    --color-ship:    var(--brand-gold);
+    --color-ship-hi: var(--brand-gold-hi);
+    --color-target:  var(--brand-teal);
+  
+    --color-success: #3acf7e;
+    --color-warn:    var(--brand-gold);
+    --color-error:   var(--brand-red-hi);
+    --color-info:    var(--brand-teal);
+  
+    /* ----- Typography ----- */
+    --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  
+    --fs-xs:   0.75rem;
+    --fs-sm:   0.875rem;
+    --fs-base: 1rem;
+    --fs-md:   1.125rem;
+    --fs-lg:   1.375rem;
+    --fs-xl:   1.75rem;
+    --fs-2xl:  2.25rem;
+    --fs-3xl:  3rem;
+  
+    --lh-tight:  1.15;
+    --lh-normal: 1.5;
+    --lh-loose:  1.7;
+  
+    /* ----- Spacing ----- */
+    --sp-1:  0.25rem;
+    --sp-2:  0.5rem;
+    --sp-3:  0.75rem;
+    --sp-4:  1rem;
+    --sp-5:  1.25rem;
+    --sp-6:  1.5rem;
+    --sp-8:  2rem;
+    --sp-10: 2.5rem;
+    --sp-12: 3rem;
+    --sp-16: 4rem;
+  
+    /* ----- Radius ----- */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
+    --r-pill: 999px;
+  
+    /* ----- Elevation ----- */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.25), 0 1px 1px rgba(0,0,0,0.12);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.18);
+    --shadow-lg: 0 18px 40px rgba(0,0,0,0.45), 0 6px 12px rgba(0,0,0,0.22);
+  
+    /* ----- Glass ----- */
+    --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    --glass-border: 1px solid var(--color-border);
+    --glass-blur: blur(14px) saturate(120%);
+  }
+  
+  /* ==========================================================================
+     Light Theme — FIXED GRID VISIBILITY
+     ========================================================================== */
+  
+  :root[data-theme="light"] {
+    /* Background slightly darker so white tiles don’t disappear */
+    --color-bg:        #eef2f9;
+    --color-bg-deep:   #e3e8f3;
+  
+    /* Make tiles stand out */
+    --color-surface:   rgba(255,255,255,0.85);
+    --color-surface-2: rgba(255,255,255,0.95);
+    --color-surface-3: rgba(235,240,250,1);
+  
+    /* 🔥 MAIN FIX: stronger grid lines */
+    --color-border:    rgba(10,15,30,0.30);
+    --color-border-hi: rgba(10,15,30,0.45);
+  
+    --color-text:      var(--navy-950);
+    --color-text-dim:  var(--navy-700);
+    --color-text-mute: var(--navy-500);
+  
+    /* Make misses visible */
+    --color-miss:   var(--navy-400);
+  
+    /* Shadows for depth */
+    --shadow-sm: 0 1px 2px rgba(10,15,30,0.12);
+    --shadow-md: 0 4px 14px rgba(10,15,30,0.14);
+    --shadow-lg: 0 18px 40px rgba(10,15,30,0.16);
 
   /* ----- Color: Hasbro accents ----- */
   --brand-red:    #e6333d;
