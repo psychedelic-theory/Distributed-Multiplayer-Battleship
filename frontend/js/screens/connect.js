@@ -35,7 +35,7 @@ const DEFAULT_SERVER = {
 };
 
 const KNOWN_SERVERS = [
-  { name: 'Team0x00 — Shrayas Raju',                          url: 'https://battleship-server-18q1.onrender.com' },
+  { name: 'Team0x00 — Shrayas Raju',                         url: 'https://battleship-server-18q1.onrender.com' },
   { name: 'Team0x01 — Max Koon & Parker Estes',              url: 'https://battleship.koon.us' },
   { name: 'Team0x02 — Mir Patel & St Angelo Davis',          url: 'https://finalproject-virusoutbreak-3bwa.onrender.com' },
   { name: 'Team0x03 — Anthony Martino & Ian Sincoff',        url: 'https://finalproject3750.onrender.com' },
