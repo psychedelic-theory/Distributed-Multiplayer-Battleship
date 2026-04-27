@@ -1,10 +1,27 @@
 // ==========================================================================
 // Store — reactive global state
+//
+// PERSISTED KEYS: 'player', 'recentServers', 'theme'
+//
+// NOTE: 'serverUrl' is intentionally NOT persisted. Persisting it caused two
+// bugs:
+//   1. On page reload, validateInitialState() saw a non-null serverUrl and
+//      routed straight to 'lobby', bypassing connect.js and the probe() that
+//      validates the connection — so the client could end up pointing at a
+//      stale or wrong URL with serverConnected=false.
+//   2. After a manual disconnect, the stored serverUrl was restored on the
+//      next store.set() call, undoing the disconnect before the user could
+//      choose a different server.
+//
+// Consequence: every page load starts at the connect screen. The auto-connect
+// logic in connect.js handles the cold-boot probe to the default server, and
+// 'player' persistence means the user's identity is remembered across sessions
+// once they reconnect.
 // ==========================================================================
 
 import { storage } from '../utils/storage.js';
 
-const PERSIST_KEYS = ['serverUrl', 'player', 'recentServers', 'theme'];
+const PERSIST_KEYS = ['player', 'recentServers', 'theme'];
 
 const initialState = {
   // Navigation
@@ -13,18 +30,18 @@ const initialState = {
   // Theme — persisted; falls back to OS preference on first load
   theme: window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark',
 
-  // Connection
+  // Connection — never persisted; always re-established on page load
   serverUrl: null,
   serverConnected: false,
   recentServers: [],
 
-  // Identity
+  // Identity — persisted so the user doesn't re-enter their name every session
   player: null,               // { player_id, username }
 
   // Game session
   gameId: null,
   game: null,                 // normalized game object
-  myShips: [],                // [{row,col}] persisted per-game in memory
+  myShips: [],                // [{row,col}] kept in memory for the current game
   moves: [],                  // full move history for current game
   opponentMoves: [],          // moves by opponents only
   myMoves: [],                // moves by me only
@@ -40,7 +57,6 @@ function loadPersisted() {
     const v = storage.get(k, undefined);
     if (v !== undefined) patch[k] = v;
   }
-  // Sensible defaults
   if (!patch.recentServers) patch.recentServers = [];
   return patch;
 }
@@ -53,8 +69,12 @@ function savePersisted(state) {
 
 function createStore() {
   let state = { ...initialState, ...loadPersisted() };
-  // If we loaded a serverUrl from storage, mark connection as not-yet-probed.
+
+  // Always start disconnected regardless of what was stored. The connect
+  // screen is responsible for establishing (and validating) a connection.
+  state.serverUrl = null;
   state.serverConnected = false;
+  state.screen = 'connect';
 
   const listeners = new Set();
 

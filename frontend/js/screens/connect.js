@@ -2,15 +2,16 @@
 // Connect screen — tiered server list with auto-connect on load.
 //
 // Server tiers:
-//   1. DEFAULT_SERVER  — official server, auto-connected on page load
+//   1. DEFAULT_SERVER  — official server, auto-connected on first cold-boot
 //   2. KNOWN_SERVERS   — hardcoded team servers, selectable but not default
 //   3. Custom URL input — manual fallback at the bottom
 //
 // Auto-connect behaviour:
-//   - On mount, silently probe DEFAULT_SERVER.
-//   - Success → proceed to lobby as if the user clicked Connect.
-//   - Failure → stay on connect screen, show an error banner explaining
-//     what happened, and let the user pick from the list manually.
+//   - On the very first mount (cold-boot), silently probe DEFAULT_SERVER.
+//   - Success → proceed to lobby.
+//   - Failure → show the server list with an error banner.
+//   - On subsequent mounts (e.g. after disconnect) auto-connect does NOT
+//     re-fire — the user sees the list immediately so they can choose freely.
 // ==========================================================================
 
 import { h, mount } from '../utils/dom.js';
@@ -55,27 +56,34 @@ const KNOWN_SERVERS = [
   { name: 'Team0x12 — Jack Stivers & Shaun Whitt',           url: 'https://final-project-7xwd.onrender.com' },
 ];
 
-// Normalize all URLs (strip trailing slashes, ensure scheme)
+// Normalize all URLs once at module load time.
 [DEFAULT_SERVER, ...KNOWN_SERVERS].forEach(s => {
   s.url = normalizeBaseUrl(s.url);
 });
+
+// ---------------------------------------------------------------------------
+// Module-level one-shot guard.
+// Flipped to true after the first auto-connect attempt (success OR failure).
+// Prevents re-firing when the user navigates back to this screen after a
+// manual disconnect — on re-mount they see the list immediately and choose
+// a server explicitly.
+// ---------------------------------------------------------------------------
+let autoConnectDone = false;
 
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
 export function render(mountEl) {
-  // Which server row is highlighted (url string or null)
   let selectedUrl = DEFAULT_SERVER.url;
-  // Custom URL field value
   let customValue = '';
-  // True while a probe is in flight
   let probing = false;
-  // True during the silent auto-connect attempt on first mount
-  let autoConnecting = true;
-  // Non-null when the auto-connect attempt failed
+
+  // Show the loading spinner only on the very first mount where we will
+  // attempt auto-connect. On re-mounts (post-disconnect) skip straight to
+  // the server list.
+  let autoConnecting = !autoConnectDone;
   let autoConnectError = '';
-  // Inline error for the custom URL field
   let customError = '';
 
   const rerender = () => mount(mountEl, build());
@@ -99,32 +107,33 @@ export function render(mountEl) {
     try {
       const client = session.getClient(normalized);
       await client.probe();
-      store.addRecentServer(normalized);
       store.set({ serverUrl: normalized, serverConnected: true, screen: 'lobby' });
       toast.success('Connected', normalized.replace(/^https?:\/\//, ''));
     } catch (err) {
       probing = false;
-      customError = normalized === DEFAULT_SERVER.url ? '' : (err.message || 'Could not reach server.');
+      customError = normalized === DEFAULT_SERVER.url
+        ? ''
+        : (err.message || 'Could not reach server.');
       rerender();
     }
   }
 
-  // Silent probe on mount — no UI spinner, just transitions away on success.
+  // Runs at most once per page-load (guarded by autoConnectDone).
   async function autoConnect() {
     try {
       const client = session.getClient(DEFAULT_SERVER.url);
       await client.probe();
-      store.addRecentServer(DEFAULT_SERVER.url);
+      autoConnectDone = true;
       store.set({
         serverUrl: DEFAULT_SERVER.url,
         serverConnected: true,
         screen: 'lobby',
       });
-      // No toast — silent handoff feels cleaner on auto-connect
     } catch (_err) {
+      autoConnectDone = true;
+      autoConnecting = false;
       autoConnectError =
         'Could not reach the official server. Please choose a server below or enter a custom URL.';
-      autoConnecting = false;
       rerender();
     }
   }
@@ -133,13 +142,13 @@ export function render(mountEl) {
   function selectServer(url) {
     if (probing) return;
     selectedUrl = url;
+    customValue = '';
     customError = '';
     rerender();
   }
 
   // ---- Build ----
   function build() {
-    // While the silent auto-connect is in flight show a minimal loader.
     if (autoConnecting) {
       return h('div', { class: 'screen screen--narrow fade-in' },
         h('div', { class: 'connect-hero' },
@@ -152,7 +161,6 @@ export function render(mountEl) {
       );
     }
 
-    // Build the full list: default first, then known servers.
     const allServers = [DEFAULT_SERVER, ...KNOWN_SERVERS];
 
     return h('div', { class: 'screen screen--narrow fade-in' },
@@ -161,7 +169,7 @@ export function render(mountEl) {
         h('p', {}, 'Select a server to play on, or enter a custom URL below.'),
       ),
 
-      // Error banner (only shown when auto-connect failed)
+      // Error banner — only shown when auto-connect failed
       autoConnectError && h('div', {
         style: {
           display: 'flex',
@@ -228,7 +236,7 @@ export function render(mountEl) {
               disabled: probing,
               onInput: v => {
                 customValue = v;
-                if (v.trim()) selectedUrl = null; // deselect list row when typing
+                if (v.trim()) selectedUrl = null;
                 rerender();
               },
               onEnter: v => {
@@ -281,7 +289,6 @@ export function render(mountEl) {
       },
       onClick: () => selectServer(server.url),
     },
-      // Status dot
       h('div', {
         style: {
           width: '8px',
@@ -293,7 +300,6 @@ export function render(mountEl) {
         },
       }),
 
-      // Name + URL
       h('div', { style: { flex: '1', minWidth: '0' } },
         h('div', {
           style: {
@@ -317,7 +323,6 @@ export function render(mountEl) {
         }, server.url.replace(/^https?:\/\//, '')),
       ),
 
-      // Badge
       isDefault
         ? h('span', {
             style: {
@@ -335,7 +340,9 @@ export function render(mountEl) {
     );
   }
 
-  // ---- Kick off auto-connect immediately ----
+  // Kick off auto-connect only on the very first page-load mount.
   rerender();
-  autoConnect();
+  if (!autoConnectDone) {
+    autoConnect();
+  }
 }
