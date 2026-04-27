@@ -69,7 +69,7 @@ export function render(mountEl) {
       store.set({ player: { player_id, username: uname } });
       toast.success('Signed in', `Welcome back, ${uname}.`);
       client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
-      await refreshGames(); // ← now awaited so loadingGames is false before rerender
+      refreshGames();
     } catch (err) {
       if (err.status === 404) {
         authError = 'No account found with that username.';
@@ -78,7 +78,6 @@ export function render(mountEl) {
       }
     } finally {
       authing = false;
-      loadingGames = false; // ← force this false so lobby renders immediately
       rerender();
     }
   }
@@ -100,7 +99,7 @@ export function render(mountEl) {
       store.set({ player: { player_id: full.player_id ?? player_id, username: full.username ?? trimmed } });
       toast.success('Account created', `Welcome, ${full.username || trimmed}.`);
       client.getPlayerStats(player_id).then(stats => store.set({ myStats: stats })).catch(() => {});
-      await refreshGames(); // ← now awaited
+      refreshGames();
     } catch (err) {
       if (err.status === 409) {
         authError = 'That username is already taken.';
@@ -109,7 +108,6 @@ export function render(mountEl) {
       }
     } finally {
       authing = false;
-      loadingGames = false; // ← force this false
       rerender();
     }
   }
