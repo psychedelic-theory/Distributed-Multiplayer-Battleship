@@ -18,16 +18,13 @@ import * as end from './screens/end.js';
 const screens = { connect, lobby, placement, game, end };
 
 let currentScreen = null;
+let currentPlayerId = null; // track player so sign-out forces a re-render
 let headerMount = null;
 let screenMount = null;
 
-// Track the last values of header-relevant state so we can skip rebuilding
-// the header on unrelated store changes (e.g. polling updates to `game`).
 let lastHeaderKey = null;
 
 function headerKey(state) {
-  // Anything the header reads should be in this key. If the key hasn't changed,
-  // the header's visual output wouldn't change either, so skip the rebuild.
   return JSON.stringify({
     screen: state.screen,
     serverUrl: state.serverUrl,
@@ -44,8 +41,6 @@ function renderHeader(force = false) {
   if (!force && key === lastHeaderKey) return;
   lastHeaderKey = key;
 
-  // Connect screen has its own hero treatment — show a floating toolbar with
-  // just the theme toggle instead of the full header.
   if (state.screen === 'connect') {
     mount(headerMount, h('div', { class: 'connect-toolbar' }, ThemeToggle()));
     return;
@@ -62,21 +57,25 @@ function renderScreen() {
     return;
   }
 
-  // Stop any lingering polling when switching screens.
-  // Individual screens re-start polling as needed.
   session.stopPolling();
-
-  // Render into the screen mount
   module.render(screenMount);
   currentScreen = screen;
 }
 
 function rerenderAll() {
   renderHeader();
-  // Only re-render screen body when screen actually changes; each screen is
-  // responsible for its own intra-screen re-renders.
-  const { screen } = store.get();
-  if (screen !== currentScreen) {
+
+  const state = store.get();
+  const newPlayerId = state.player?.player_id ?? null;
+  const screenChanged = state.screen !== currentScreen;
+  // Re-render the lobby when the player signs out (player goes from set → null
+  // while remaining on the lobby screen). Without this, the screen-change guard
+  // would skip renderScreen() since the screen name hasn't changed.
+  const playerSignedOut = currentPlayerId !== null && newPlayerId === null && state.screen === 'lobby';
+
+  currentPlayerId = newPlayerId;
+
+  if (screenChanged || playerSignedOut) {
     renderScreen();
   }
 }
@@ -86,15 +85,12 @@ function setupRouter() {
 }
 
 function validateInitialState() {
-  // If we have a serverUrl from storage but haven't probed yet, start at connect.
   const { serverUrl, player } = store.get();
   if (!serverUrl) {
     store.set({ screen: 'connect' });
   } else if (!player) {
-    // Known server, but no player registered — go to lobby to register.
     store.set({ screen: 'lobby' });
   } else {
-    // Have both — go to lobby.
     store.set({ screen: 'lobby' });
   }
 }
@@ -107,7 +103,6 @@ function boot() {
 
   clear(app);
 
-  // Structure: header + screen container
   headerMount = h('div', { id: 'header-mount' });
   screenMount = h('main', { id: 'screen-mount', class: 'app-shell' });
 
@@ -116,12 +111,10 @@ function boot() {
 
   setupRouter();
   validateInitialState();
-  // Initial render (validateInitialState may not trigger a change if screen matches)
   renderHeader(true);
   renderScreen();
 }
 
-// Go.
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', boot);
 } else {

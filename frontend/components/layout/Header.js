@@ -11,11 +11,6 @@ import { store } from '../../js/state/store.js';
 import { session } from '../../js/state/session.js';
 import { toast } from '../../js/utils/toast.js';
 
-/**
- * Header — reads from store directly.
- * Shows brand, back-to-lobby when in game screens, ThemeToggle,
- * ServerPill with disconnect, and Identity if signed in.
- */
 export function Header() {
   const { serverUrl, player, screen } = store.get();
 
@@ -35,7 +30,8 @@ export function Header() {
   const onSignOut = () => {
     session.stopPolling();
     store.resetGame();
-    store.set({ player: null, screen: 'lobby' });
+    store.set({ player: null, myStats: null, screen: 'connect' });
+    store.set({ screen: 'lobby' });
   };
 
   const onBackToLobby = () => {
