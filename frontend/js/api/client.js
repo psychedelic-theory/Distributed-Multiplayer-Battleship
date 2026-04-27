@@ -144,15 +144,15 @@ export class ApiClient {
     return body;
   }
 
-  /** Quick health/probe — tries /api/games (a GET) or falls back. */
+  /** Quick health/probe — tries /api/health (a GET) or falls back. */
   async probe() {
-    try {
-      const res = await fetch(this.baseUrl + '/api/games', { method: 'GET' });
-      return { ok: true, status: res.status };
-    } catch (err) {
-      throw new ApiError(`Cannot reach ${this.baseUrl}: ${err.message}`, { endpoint: '/api/games' });
-    }
+  try {
+    const res = await fetch(this.baseUrl + '/api/health', { method: 'GET' });
+    return { ok: true, status: res.status };
+  } catch (err) {
+    throw new ApiError(`Cannot reach ${this.baseUrl}: ${err.message}`, { endpoint: '/api/health' });
   }
+}
 
   // ---------- Players ----------
 
