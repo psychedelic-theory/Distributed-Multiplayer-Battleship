@@ -478,33 +478,54 @@ export function render(mountEl) {
     );
   }
 
-// ---- Initial render + kickoff ----
-rerender();
+  // ---- Initial render + kickoff ----
+  rerender();
 
-const { player } = store.get();
-if (player) {
-  refreshGames();
-  refreshStats();
-}
-
-// Auto-poll the game list every 30 seconds to keep player counts fresh.
-let lobbyPollInterval = null;
-
-if (store.get().player) {
-  lobbyPollInterval = setInterval(() => {
+  const { player } = store.get();
+  if (player) {
     refreshGames();
-  }, 30000);
-}
+    refreshStats();
+  }
 
-// Clean up the interval when the user navigates away.
-// This prevents stacking intervals and continuous background requests.
-const unsubscribeLobby = store.subscribe(state => {
-  if (state.screen !== 'lobby') {
+  // Auto-poll setup — only starts after a player is signed in.
+  let lobbyPollInterval = null;
+
+  function startLobbyPoll() {
+    if (lobbyPollInterval) return; // already running, don't stack
+    lobbyPollInterval = setInterval(() => {
+      if (store.get().screen !== 'lobby') {
+        clearInterval(lobbyPollInterval);
+        lobbyPollInterval = null;
+        return;
+      }
+      if (store.get().player) refreshGames();
+    }, 30000);
+  }
+
+  function stopLobbyPoll() {
     if (lobbyPollInterval) {
       clearInterval(lobbyPollInterval);
       lobbyPollInterval = null;
     }
-    unsubscribeLobby();
   }
-});
+
+  // Start immediately if already signed in, otherwise wait for sign-in.
+  if (store.get().player) {
+    startLobbyPoll();
+  }
+
+  // Watch for sign-in (to start poll) and navigation away (to stop poll).
+  const unsubscribeLobby = store.subscribe(state => {
+    if (state.screen !== 'lobby') {
+      stopLobbyPoll();
+      unsubscribeLobby();
+      return;
+    }
+    if (state.player && !lobbyPollInterval) {
+      startLobbyPoll();
+    }
+    if (!state.player) {
+      stopLobbyPoll();
+    }
+  });
 }
