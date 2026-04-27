@@ -146,13 +146,20 @@ export class ApiClient {
 
   /** Quick health/probe — tries /api/health (a GET) or falls back. */
   async probe() {
-  try {
-    const res = await fetch(this.baseUrl + '/api/health', { method: 'GET' });
-    return { ok: true, status: res.status };
-  } catch (err) {
-    throw new ApiError(`Cannot reach ${this.baseUrl}: ${err.message}`, { endpoint: '/api/health' });
+    const endpoints = ['/api/health', '/api/games'];
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(this.baseUrl + endpoint, { method: 'GET' });
+        if (res.ok || res.status === 404) {
+          // 404 still means the server is reachable, just that endpoint doesn't exist
+          return { ok: true, status: res.status };
+        }
+      } catch (err) {
+        // This endpoint failed, try the next one
+      }
+    }
+    throw new ApiError(`Cannot reach ${this.baseUrl}`, { endpoint: '/api/health, /api/games' });
   }
-}
 
   // ---------- Players ----------
 
