@@ -613,14 +613,15 @@ def fire(game_id):
             if cur.fetchone():
                 return err("You already fired at this cell", 409)
 
-            # Determine hit or miss
+            # Determine hit or miss — exclude firing player's own ships
             cur.execute(
                 """
                 SELECT s.player_id
                 FROM ships s
                 WHERE s.game_id=%s AND s.row=%s AND s.col=%s
+                AND s.player_id != %s
                 """,
-                (game_id, row, col),
+                (game_id, row, col, player_id),
             )
             ship_row = cur.fetchone()
 
