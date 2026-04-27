@@ -3,20 +3,11 @@
 //
 // PERSISTED KEYS: 'player', 'recentServers', 'theme'
 //
-// NOTE: 'serverUrl' is intentionally NOT persisted. Persisting it caused two
-// bugs:
-//   1. On page reload, validateInitialState() saw a non-null serverUrl and
-//      routed straight to 'lobby', bypassing connect.js and the probe() that
-//      validates the connection — so the client could end up pointing at a
-//      stale or wrong URL with serverConnected=false.
-//   2. After a manual disconnect, the stored serverUrl was restored on the
-//      next store.set() call, undoing the disconnect before the user could
-//      choose a different server.
+// 'serverUrl' is intentionally NOT persisted — every page load starts at the
+// connect screen so the connection is always freshly validated.
 //
-// Consequence: every page load starts at the connect screen. The auto-connect
-// logic in connect.js handles the cold-boot probe to the default server, and
-// 'player' persistence means the user's identity is remembered across sessions
-// once they reconnect.
+// Ship positions ARE persisted, but separately via persistShips/restoreShips,
+// keyed by "gameId:playerId" so rejoining a game restores the correct board.
 // ==========================================================================
 
 import { storage } from '../utils/storage.js';
@@ -41,11 +32,11 @@ const initialState = {
   // Game session
   gameId: null,
   game: null,                 // normalized game object
-  myShips: [],                // [{row,col}] kept in memory for the current game
-  moves: [],                  // full move history for current game
-  opponentMoves: [],          // moves by opponents only
-  myMoves: [],                // moves by me only
-  lastEvent: null,            // { type, ... } for transient UI feedback
+  myShips: [],                // [{row, col, shipIndex}] — in-memory + localStorage
+  moves: [],
+  opponentMoves: [],
+  myMoves: [],
+  lastEvent: null,
 
   // Derived stats (session-local)
   myStats: null,
@@ -67,11 +58,15 @@ function savePersisted(state) {
   }
 }
 
+// Ship persistence helpers — keyed by "ships:gameId:playerId"
+function shipsKey(gameId, playerId) {
+  return `ships:${gameId}:${playerId}`;
+}
+
 function createStore() {
   let state = { ...initialState, ...loadPersisted() };
 
-  // Always start disconnected regardless of what was stored. The connect
-  // screen is responsible for establishing (and validating) a connection.
+  // Always start disconnected; connect screen re-establishes everything.
   state.serverUrl = null;
   state.serverConnected = false;
   state.screen = 'connect';
@@ -114,7 +109,30 @@ function createStore() {
     set({ recentServers: updated });
   }
 
-  return { get, set, subscribe, resetGame, addRecentServer };
+  // ---------------------------------------------------------------------------
+  // Ship persistence — called by placement.js whenever ships are confirmed,
+  // and by lobby.js when entering a game to restore prior placements.
+  // ---------------------------------------------------------------------------
+
+  /** Save placed ships to localStorage for a specific game+player. */
+  function persistShips(gameId, playerId, ships) {
+    if (!gameId || !playerId) return;
+    storage.set(shipsKey(gameId, playerId), ships);
+  }
+
+  /** Restore ships from localStorage. Returns [] if nothing stored. */
+  function restoreShips(gameId, playerId) {
+    if (!gameId || !playerId) return [];
+    return storage.get(shipsKey(gameId, playerId), []);
+  }
+
+  /** Remove persisted ships (called when a game is finished or reset). */
+  function clearShips(gameId, playerId) {
+    if (!gameId || !playerId) return;
+    storage.remove(shipsKey(gameId, playerId));
+  }
+
+  return { get, set, subscribe, resetGame, addRecentServer, persistShips, restoreShips, clearShips };
 }
 
 export const store = createStore();

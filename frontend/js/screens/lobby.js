@@ -1,5 +1,15 @@
 // ==========================================================================
-// Lobby screen — sign in or create account, list/create/join games
+// Lobby screen — sign in or create account, list/create/join games.
+//
+// Rejoin logic (Option B):
+//   - isMemberOf() checks whether the current player already has a row in a
+//     game (via creator_id or the players array when present).
+//   - GameRow receives isMember=true for those games and renders an "Open"
+//     button instead of "Join".
+//   - enterGame() is called directly — it fetches the current game state and
+//     routes to placement, game, or end screen without calling /join again.
+//   - If the game is active and the player has persisted ships, those are
+//     restored from localStorage so the board renders correctly on rejoin.
 // ==========================================================================
 
 import { h, mount } from '../utils/dom.js';
@@ -41,7 +51,7 @@ export function render(mountEl) {
     rerender();
   }
 
-  // ---- Sign in: GET /api/players/by-username/<username> ----
+  // ---- Sign in ----
   async function signIn(name) {
     const client = session.getClient(store.get().serverUrl);
     if (!client) return;
@@ -72,7 +82,7 @@ export function render(mountEl) {
     }
   }
 
-  // ---- Create account: POST /api/players ----
+  // ---- Create account ----
   async function createAccount(name) {
     const client = session.getClient(store.get().serverUrl);
     if (!client) return;
@@ -107,7 +117,11 @@ export function render(mountEl) {
     else createAccount(username);
   }
 
-  // ---- Helpers ----
+  // ---- Membership check ----
+  // Returns true if the current player already has a seat in this game.
+  // We check creator_id and the players array (populated by some servers).
+  // For servers that don't include a players array we fall back to a direct
+  // /join attempt and catch the 400 duplicate-join response in joinGame().
   function isMemberOf(game, playerId) {
     if (!game || !playerId) return false;
     if (game.creator_id === playerId) return true;
@@ -120,6 +134,7 @@ export function render(mountEl) {
     return false;
   }
 
+  // ---- Create game ----
   async function createGame() {
     const { player, serverUrl } = store.get();
     if (!player) return;
@@ -146,36 +161,72 @@ export function render(mountEl) {
     }
   }
 
+  // ---- Join game (new player, not yet a member) ----
   async function joinGame(game) {
     const { player } = store.get();
     if (!player) { toast.error('Sign in first.'); return; }
+
     joining.add(game.game_id);
     rerender();
+
     try {
       const client = session.getClient(store.get().serverUrl);
       await client.joinGame(game.game_id, player.player_id);
       toast.success('Joined', `Game #${game.game_id}`);
       enterGame(game.game_id);
     } catch (err) {
+      // The server returns 400 for duplicate joins. If that happens it means
+      // we mis-detected membership (server didn't expose a players array), so
+      // treat it as a rejoin and go straight in.
+      if (err.status === 400 && err.message && err.message.toLowerCase().includes('already')) {
+        toast.info('Rejoining', `Game #${game.game_id}`);
+        enterGame(game.game_id);
+        return;
+      }
       toast.error('Join failed', err.message);
       joining.delete(game.game_id);
       rerender();
     }
   }
 
+  // ---- Enter game (handles both first-join and rejoin) ----
+  // This is the single routing function for all game entry paths. It fetches
+  // the latest game state and decides which screen to show. For rejoins into
+  // an active or waiting-but-ships-placed game, it restores myShips from
+  // localStorage so the board renders correctly without a test-mode endpoint.
   async function enterGame(gameId) {
     session.stopPolling();
     const client = session.getClient(store.get().serverUrl);
+    const { player } = store.get();
+
     try {
       const game = await client.getGame(gameId);
       store.resetGame();
       store.set({ gameId, game });
+
       if (game.status === 'waiting') {
+        // Restore ships in case this player already placed them before leaving.
+        const saved = player ? store.restoreShips(gameId, player.player_id) : [];
+        if (saved && saved.length > 0) {
+          store.set({ myShips: saved });
+        }
         store.set({ screen: 'placement' });
+
       } else if (game.status === 'active') {
+        // Always restore ships for the active game — the board needs them to
+        // render incoming hits on the correct cells.
+        const saved = player ? store.restoreShips(gameId, player.player_id) : [];
+        if (saved && saved.length > 0) {
+          store.set({ myShips: saved });
+          toast.info('Rejoined', `Game #${gameId} — your fleet has been restored.`);
+        } else {
+          toast.info('Rejoined', `Game #${gameId}`);
+        }
         store.set({ screen: 'game' });
+
       } else if (game.status === 'finished') {
         store.set({ screen: 'end' });
+
       } else {
         store.set({ screen: 'placement' });
       }
@@ -184,6 +235,7 @@ export function render(mountEl) {
     }
   }
 
+  // ---- Refresh games list ----
   async function refreshGames() {
     const client = session.getClient(store.get().serverUrl);
     if (!client) return;
@@ -210,7 +262,7 @@ export function render(mountEl) {
     } catch { /* non-fatal */ }
   }
 
-  // ---- Auth card (sign-in or create-account) ----
+  // ---- Auth card ----
   function buildAuthCard() {
     const isSignIn = authMode === 'signin';
     const title = isSignIn ? 'Sign in' : 'Create account';
@@ -355,13 +407,19 @@ export function render(mountEl) {
     });
 
     return h('div', { class: 'games-list stagger' },
-      ...sorted.map(g => GameRow({
-        game: g,
-        isMember: isMemberOf(g, pid),
-        canJoin: !!pid,
-        onJoin: joinGame,
-        onView: enterGame.bind(null, g.game_id),
-      })),
+      ...sorted.map(g => {
+        const member = isMemberOf(g, pid);
+        return GameRow({
+          game: g,
+          isMember: member,
+          canJoin: !!pid,
+          onJoin: joinGame,
+          // Both "Open" (member) and "Join" (non-member) funnel through enterGame.
+          // joinGame handles the /join API call then calls enterGame; for members
+          // the GameRow emits onView which goes straight to enterGame.
+          onView: () => enterGame(g.game_id),
+        });
+      }),
     );
   }
 
@@ -369,7 +427,6 @@ export function render(mountEl) {
   function build() {
     const { player, myStats } = store.get();
 
-    // Not signed in — show auth card only
     if (!player) {
       return h('div', { class: 'screen screen--narrow fade-in' },
         h('div', { class: 'screen__header' },
@@ -384,7 +441,6 @@ export function render(mountEl) {
       );
     }
 
-    // Signed in — full lobby view (Identity + Sign out live in the header bar only)
     return h('div', { class: 'screen fade-in' },
       h('div', { class: 'screen__header' },
         h('h1', {}, 'Lobby'),
@@ -392,7 +448,6 @@ export function render(mountEl) {
       ),
 
       h('div', { class: 'lobby-grid' },
-        // Left: games list
         h('section', {},
           h('div', { class: 'lobby-section-head' },
             h('h3', {}, 'Games'),
@@ -414,7 +469,6 @@ export function render(mountEl) {
           buildGamesList(),
         ),
 
-        // Right: create + stats
         h('aside', { class: 'stack' },
           buildCreateCard(),
           PlayerStatsCard({ stats: myStats, title: 'Your stats' }),

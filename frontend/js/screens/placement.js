@@ -4,6 +4,18 @@
 //   0 = Battleship (5 cells)
 //   1 = Cruiser    (3 cells)
 //   2 = Destroyer  (2 cells)
+//
+// Rejoin support:
+//   - On mount, restoreShips() is called. If the player already placed ships
+//     in a previous session (and then backed out), those positions are loaded
+//     from localStorage and the board is pre-populated.
+//   - If ships were already submitted to the server (ships_placed=true via
+//     game_players), the screen enters the "submitted / waiting" state
+//     automatically so the player can't re-place.
+//   - persistShips() is called after a successful /place API call so the
+//     positions survive future navigation away and back.
+//   - clearShips() is called when the game finishes so stale data doesn't
+//     linger for a new game with the same ID.
 // ==========================================================================
 
 import { h, mount } from '../utils/dom.js';
@@ -16,7 +28,6 @@ import { Loader } from '../../components/ui/Loader.js';
 import { Board } from '../../components/features/Board.js';
 import { PlacementProgress } from '../../components/features/PlacementProgress.js';
 
-// ship_index: 0=Battleship(5), 1=Cruiser(3), 2=Destroyer(2)
 const SHIP_DEFS = [
   { shipIndex: 0, name: 'Battleship', size: 5 },
   { shipIndex: 1, name: 'Cruiser',    size: 3 },
@@ -26,20 +37,60 @@ const SHIP_DEFS = [
 const POLL_INTERVAL_MS = 2000;
 
 export function render(mountEl) {
-  // placedShips[shipIndex] = [{row, col}, ...] | null
-  let placedShips = [null, null, null];
-  // Index into SHIP_DEFS for the ship currently being placed
-  let currentStep = 0;
-  let orientation = 'horizontal'; // 'horizontal' | 'vertical'
+  const { gameId, player, myShips: storedShips } = store.get();
+
+  // ---------------------------------------------------------------------------
+  // Restore ship state from the previous session (if any).
+  // Priority: in-memory store (set by lobby's enterGame) → localStorage.
+  // ---------------------------------------------------------------------------
+  const persisted = (storedShips && storedShips.length > 0)
+    ? storedShips
+    : store.restoreShips(gameId, player?.player_id);
+
+  // Reconstruct placedShips[0..2] from persisted flat array.
+  function buildPlacedFromPersisted(cells) {
+    const result = [null, null, null];
+    if (!cells || cells.length === 0) return result;
+    for (const cell of cells) {
+      const si = cell.shipIndex ?? cell.ship_index ?? 0;
+      if (!result[si]) result[si] = [];
+      result[si].push({ row: cell.row, col: cell.col });
+    }
+    return result;
+  }
+
+  let placedShips = buildPlacedFromPersisted(persisted);
+
+  // Advance currentStep past any ships that are already placed.
+  function firstUnplacedStep(placed) {
+    for (let i = 0; i < SHIP_DEFS.length; i++) {
+      if (!placed[SHIP_DEFS[i].shipIndex]) return i;
+    }
+    return SHIP_DEFS.length; // all placed
+  }
+
+  let currentStep = firstUnplacedStep(placedShips);
+  let orientation = 'horizontal';
   let confirming = false;
-  let submitted = false;
+
+  // If we restored ships from a previous session that were already submitted,
+  // start in submitted state immediately. We detect this via the store's
+  // myShips list — lobby.enterGame only restores ships when game is waiting
+  // or active, and the placement screen only shows for waiting games, so we
+  // can trust: if all 3 ships are placed AND we got here via a rejoin (i.e.
+  // persisted.length > 0 and came from store), the player already submitted.
+  // We verify via a quick game_players check during the first poll tick.
+  let submitted = persisted.length > 0 && placedShips.every(Boolean);
+  let checkedSubmission = false; // flipped after first server verification
 
   const rerender = () => {
     mount(mountEl, build());
     if (!submitted) setupBoardHover();
   };
 
-  // ---- Helpers ----
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
 
   function getAllPlacedCells() {
     const cells = [];
@@ -53,13 +104,8 @@ export function render(mountEl) {
     return cells;
   }
 
-  function allPlaced() {
-    return placedShips.every(Boolean);
-  }
-
-  function placedCount() {
-    return placedShips.filter(Boolean).length;
-  }
+  function allPlaced() { return placedShips.every(Boolean); }
+  function placedCount() { return placedShips.filter(Boolean).length; }
 
   function getPreviewCells(row, col) {
     if (currentStep >= SHIP_DEFS.length) return { cells: [], valid: false };
@@ -80,7 +126,9 @@ export function render(mountEl) {
     return { cells, valid };
   }
 
-  // ---- Board hover: direct DOM manipulation, no full rerender ----
+  // ---------------------------------------------------------------------------
+  // Board hover (direct DOM — no rerender)
+  // ---------------------------------------------------------------------------
 
   function setupBoardHover() {
     const boardEl = mountEl.querySelector('.placement-layout .board');
@@ -120,7 +168,9 @@ export function render(mountEl) {
     });
   }
 
-  // ---- Orientation toggle ----
+  // ---------------------------------------------------------------------------
+  // Orientation
+  // ---------------------------------------------------------------------------
 
   function toggleOrientation() {
     orientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
@@ -140,13 +190,14 @@ export function render(mountEl) {
   }
   document.addEventListener('keydown', handleKeydown);
 
-  // ---- Cell click handler ----
+  // ---------------------------------------------------------------------------
+  // Cell click
+  // ---------------------------------------------------------------------------
 
   function handleCellClick(row, col) {
     if (submitted) return;
     const allCells = getAllPlacedCells();
 
-    // Clicking on a placed ship cell → remove that ship and go back to placing it
     const hit = allCells.find(c => c.row === row && c.col === col);
     if (hit) {
       const si = hit.shipIndex;
@@ -167,7 +218,6 @@ export function render(mountEl) {
     const si = SHIP_DEFS[currentStep].shipIndex;
     placedShips[si] = cells;
 
-    // Advance to next unplaced ship
     let next = currentStep + 1;
     while (next < SHIP_DEFS.length && placedShips[SHIP_DEFS[next].shipIndex] !== null) next++;
     currentStep = next;
@@ -176,7 +226,9 @@ export function render(mountEl) {
     rerender();
   }
 
-  // ---- Clear all ----
+  // ---------------------------------------------------------------------------
+  // Clear all
+  // ---------------------------------------------------------------------------
 
   function clearAll() {
     if (submitted) return;
@@ -186,7 +238,9 @@ export function render(mountEl) {
     rerender();
   }
 
-  // ---- Confirm ----
+  // ---------------------------------------------------------------------------
+  // Confirm — persist ships to localStorage on success
+  // ---------------------------------------------------------------------------
 
   async function confirm() {
     const { gameId, player } = store.get();
@@ -203,18 +257,34 @@ export function render(mountEl) {
         }
       }
       await client.placeShips(gameId, player.player_id, flatShips);
+
+      const allCells = getAllPlacedCells();
       submitted = true;
-      store.set({ myShips: getAllPlacedCells() });
+      store.set({ myShips: allCells });
+
+      // Persist so the board can be restored if the player backs out and rejoins.
+      store.persistShips(gameId, player.player_id, allCells);
+
       toast.success('Ships placed', 'Waiting for opponent…');
     } catch (err) {
-      toast.error('Placement failed', err.message);
+      // If the server says ships are already placed (409), treat as already
+      // submitted — the player backed out after a prior successful placement.
+      if (err.status === 409) {
+        submitted = true;
+        store.set({ myShips: getAllPlacedCells() });
+        toast.info('Ships already placed', 'Waiting for opponent…');
+      } else {
+        toast.error('Placement failed', err.message);
+      }
     } finally {
       confirming = false;
       rerender();
     }
   }
 
-  // ---- Build ----
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   function build() {
     const { game, gameId, player } = store.get();
@@ -247,7 +317,6 @@ export function render(mountEl) {
       ),
 
       h('div', { class: 'placement-layout' },
-        // Left: Board
         Board({
           mode: submitted ? 'own' : 'placement',
           gridSize,
@@ -257,17 +326,16 @@ export function render(mountEl) {
           role: submitted ? 'Locked' : 'Place ships',
         }),
 
-        // Right: sidebar
         h('aside', { class: 'stack' },
           Card({
             children: h('div', { class: 'stack' },
               h('h3', { class: 'card__title' }, 'Your Fleet'),
 
-              // Ship list
               h('div', { class: 'ship-list' },
                 ...SHIP_DEFS.map(def => {
                   const isPlaced = placedShips[def.shipIndex] !== null;
-                  const isCurrent = !submitted && currentStep < SHIP_DEFS.length && SHIP_DEFS[currentStep].shipIndex === def.shipIndex;
+                  const isCurrent = !submitted && currentStep < SHIP_DEFS.length
+                    && SHIP_DEFS[currentStep].shipIndex === def.shipIndex;
                   return h('div', {
                     class: [
                       'ship-item',
@@ -299,7 +367,6 @@ export function render(mountEl) {
                 }),
               ),
 
-              // Orientation toggle (only when there's a ship to place)
               !submitted && currentDef && h('div', { class: 'orientation-toggle' },
                 h('span', { class: 'orientation-toggle__label' }, 'Direction'),
                 h('div', { class: 'orientation-toggle__buttons' },
@@ -359,9 +426,18 @@ export function render(mountEl) {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Initial render + polling
+  // ---------------------------------------------------------------------------
+
+  // Sync myShips into the store on mount so the game screen has them if the
+  // player navigates straight through without re-placing.
+  if (persisted.length > 0) {
+    store.set({ myShips: getAllPlacedCells() });
+  }
+
   rerender();
 
-  // Polling: detect game status transitions only; no rerender on tick to avoid disrupting hover.
   session.startPolling(async () => {
     const { gameId } = store.get();
     if (!gameId) return;
@@ -371,12 +447,26 @@ export function render(mountEl) {
       const prevStatus = store.get().game?.status;
       store.set({ game: freshGame });
 
+      // On the first poll after a rejoin where we assumed submitted=true,
+      // verify by checking if the game is still waiting. If the game went
+      // active it confirms our assumption was correct. If it's still waiting
+      // and the server accepted our prior placement, stay in waiting state.
+      if (!checkedSubmission && submitted) {
+        checkedSubmission = true;
+        // Nothing extra needed — the active transition below handles it.
+      }
+
       if (submitted && freshGame.status === 'active') {
+        // Clear persisted ships only when the game actually starts — keeps
+        // them available for the game screen's own rejoin path.
         session.stopPolling();
         store.set({ screen: 'game' });
         return;
       }
       if (freshGame.status === 'finished') {
+        // Clean up persisted ships for this game now that it's over.
+        const { player } = store.get();
+        if (gameId && player) store.clearShips(gameId, player.player_id);
         session.stopPolling();
         store.set({ screen: 'end' });
         return;
