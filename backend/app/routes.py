@@ -626,15 +626,13 @@ def fire(game_id):
 
             if ship_row and ship_row["player_id"] != player_id:
                 cur.execute(
-                    """
-                    SELECT 1
-                    FROM moves
-                    WHERE game_id=%s AND row=%s AND col=%s AND result='hit'
-                    """,
+                    """SELECT 1 FROM moves WHERE game_id=%s AND row=%s AND col=%s AND result='hit'""",
                     (game_id, row, col),
                 )
                 already_hit = cur.fetchone()
-                result = "hit" if not already_hit else "miss"
+                if already_hit:
+                    return err("You already fired at this cell", 409)  # reject, don't corrupt
+                result = "hit"
             else:
                 result = "miss"
 
