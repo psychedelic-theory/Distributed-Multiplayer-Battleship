@@ -478,7 +478,7 @@ export function render(mountEl) {
     );
   }
 
-    // ---- Initial render + kickoff ----
+  // ---- Initial render + kickoff ----
   rerender();
 
   const { player } = store.get();
@@ -487,12 +487,45 @@ export function render(mountEl) {
     refreshStats();
   }
 
-  // Simple 30-second auto-refresh, clears when user leaves lobby.
-  const lobbyPollInterval = setInterval(() => {
-    if (store.get().screen !== 'lobby' || !store.get().player) {
+  // Auto-poll setup — only starts after a player is signed in.
+  let lobbyPollInterval = null;
+
+  function startLobbyPoll() {
+    if (lobbyPollInterval) return; // already running, don't stack
+    lobbyPollInterval = setInterval(() => {
+      if (store.get().screen !== 'lobby') {
+        clearInterval(lobbyPollInterval);
+        lobbyPollInterval = null;
+        return;
+      }
+      if (store.get().player) refreshGames();
+    }, 30000);
+  }
+
+  function stopLobbyPoll() {
+    if (lobbyPollInterval) {
       clearInterval(lobbyPollInterval);
+      lobbyPollInterval = null;
+    }
+  }
+
+  // Start immediately if already signed in, otherwise wait for sign-in.
+  if (store.get().player) {
+    startLobbyPoll();
+  }
+
+  // Watch for sign-in (to start poll) and navigation away (to stop poll).
+  const unsubscribeLobby = store.subscribe(state => {
+    if (state.screen !== 'lobby') {
+      stopLobbyPoll();
+      unsubscribeLobby();
       return;
     }
-    refreshGames();
-  }, 30000);
+    if (state.player && !lobbyPollInterval) {
+      startLobbyPoll();
+    }
+    if (!state.player) {
+      stopLobbyPoll();
+    }
+  });
 }
