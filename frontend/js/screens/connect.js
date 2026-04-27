@@ -30,7 +30,7 @@ import { Loader } from '../../components/ui/Loader.js';
 
 const DEFAULT_SERVER = {
   name: 'Official server',
-  url: 'https://p01--frontend--zm8jxh5c8bph.code.run',
+  url: 'https://p01--backend--zm8jxh5c8bph.code.run',
   isDefault: true,
 };
 
@@ -43,7 +43,6 @@ const KNOWN_SERVERS = [
   { name: 'Team0x05 — Mason Price & Shihab Abdelrahim',      url: 'https://cpsc3720finalproject.onrender.com' },
   { name: 'Team0x06 — Jude Slade & Alex Lake',               url: 'https://three750final.onrender.com' },
   { name: 'Team0x07 — Owen Schuyler & Jennifer Johnson',     url: 'https://persistent-waters.onrender.com' },
-  { name: 'Team0x08 — Nathan Kitchens & Johan Zapata',       url: 'https://p01--backend--zm8jxh5c8bph.code.run' },
   { name: 'Team0x09 — Taylor Carter & Kevin Murphy',         url: 'https://lightslategray-dogfish-869967.hostingersite.com' },
   { name: 'Team0x0A — Anabel Thompson & Gabriella Borjas',   url: 'https://battleship-1-qpm6.onrender.com' },
   { name: 'Team0x0B — Bryce Dickson & James Kluttz',         url: 'https://cpsc.loosesocket.com' },
