@@ -47,7 +47,7 @@ const KNOWN_SERVERS = [
   { name: 'Team0x0A — Anabel Thompson & Gabriella Borjas',   url: 'https://battleship-1-qpm6.onrender.com' },
   { name: 'Team0x0B — Bryce Dickson & James Kluttz',         url: 'https://cpsc.loosesocket.com' },
   { name: 'Team0x0C — Aryan Kapoor & Roman Pasqualone',      url: 'https://battleship-advanced.onrender.com' },
-  { name: 'Team0x0D — Pascual Sebastian & Tian Xue',         url: 'https://vibe-hunter.com/battleship' },
+  { name: 'Team0x0D — Pascual Sebastian & Tian Xue',         url: 'https://vibe-hunter.com/battleship/' },
   { name: 'Team0x0E — Andrew Hwang & Jack Huber',            url: 'https://cpsc3750-battleshipproject.onrender.com' },
   { name: 'Team0x0F — Anthony Frialde & Christian Johnston', url: 'https://cpsc-3750-battleship-final-project-phase1.onrender.com' },
   { name: 'Team0x10 — Justin Hooker & Seth Stamper',         url: 'https://capstone3750-production.up.railway.app' },
