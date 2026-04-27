@@ -9,7 +9,6 @@ import { toast } from '../utils/toast.js';
 import { Card } from '../../components/ui/Card.js';
 import { Button } from '../../components/ui/Button.js';
 import { Field, Input, Select } from '../../components/ui/Field.js';
-import { Identity } from '../../components/ui/Identity.js';
 import { Loader } from '../../components/ui/Loader.js';
 import { GameRow } from '../../components/features/GameRow.js';
 import { PlayerStatsCard } from '../../components/features/PlayerStatsCard.js';
@@ -55,7 +54,6 @@ export function render(mountEl) {
 
     try {
       const body = await client.getPlayerByUsername(trimmed);
-      // Normalize whichever shape the server returns
       const player_id = body.player_id;
       const uname = body.username ?? trimmed;
       store.set({ player: { player_id, username: uname } });
@@ -107,15 +105,6 @@ export function render(mountEl) {
   function handleAuthSubmit() {
     if (authMode === 'signin') signIn(username);
     else createAccount(username);
-  }
-
-  // ---- Sign out ----
-  function signOut() {
-    store.set({ player: null, myStats: null });
-    authMode = 'signin';
-    username = '';
-    authError = '';
-    rerender();
   }
 
   // ---- Helpers ----
@@ -232,7 +221,6 @@ export function render(mountEl) {
     const toggleLabel = isSignIn ? 'No account yet? ' : 'Already have one? ';
     const toggleAction = isSignIn ? 'Create one' : 'Sign in';
 
-    // Error message with optional mode-switch link
     let errorNode = null;
     if (authError) {
       const showSwitch = (isSignIn && authError.includes('No account'))
@@ -396,22 +384,11 @@ export function render(mountEl) {
       );
     }
 
-    // Signed in — full lobby view
+    // Signed in — full lobby view (Identity + Sign out live in the header bar only)
     return h('div', { class: 'screen fade-in' },
-      h('div', { class: 'screen__header row-between' },
-        h('div', {},
-          h('h1', {}, 'Lobby'),
-          h('div', { class: 'subtitle' }, 'Browse games, join one, or create your own.'),
-        ),
-        h('div', { class: 'row' },
-          Identity({ name: player.username, me: true, large: true }),
-          Button({
-            variant: 'ghost',
-            size: 'sm',
-            onClick: signOut,
-            children: 'Sign out',
-          }),
-        ),
+      h('div', { class: 'screen__header' },
+        h('h1', {}, 'Lobby'),
+        h('div', { class: 'subtitle' }, 'Browse games, join one, or create your own.'),
       ),
 
       h('div', { class: 'lobby-grid' },
