@@ -478,11 +478,21 @@ export function render(mountEl) {
   }
 
   // ---- Initial render + kickoff ----
-  rerender();
+rerender();
 
-  const { player } = store.get();
-  if (player) {
+const { player } = store.get();
+if (player) {
+  refreshGames();
+  refreshStats();
+}
+
+  // Auto-poll the game list every 30 seconds to keep player counts fresh.
+  // Clears itself when the user navigates away from the lobby.
+  const lobbyPollInterval = setInterval(() => {
+    if (store.get().screen !== 'lobby') {
+      clearInterval(lobbyPollInterval);
+      return;
+    }
     refreshGames();
-    refreshStats();
-  }
+  }, 30000);
 }
